@@ -1,0 +1,476 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9473E341F1C5B24D1B974B6 /* ContentView.swift */; };
+		48B0F121C3BC8025B3D78869 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B9EC35BE5D78C9EF7E880F /* Models.swift */; };
+		5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */; };
+		79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9403179EF835E4DBD2024AA9 /* AppModel.swift */; };
+		8FC7351163185D7EEED91C13 /* UniVRAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABBAE4626823721535CE8977 /* UniVRAPIClient.swift */; };
+		B8A04F6513073CB7B90032E6 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */; };
+		BBF6D5E675D1D4CEAB369400 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37F0880B847009749691C13D /* Foundation.framework */; };
+		D116384EDB49E2B25744F02E /* DateHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416D735280BCBB40E151D3EA /* DateHelpers.swift */; };
+		E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31FBCD971D8D0EC82AA9D94F /* RoomsView.swift */; };
+		EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23ECF010C340C71EEC76D0A8 /* Assets.xcassets */; };
+		EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01564628BE969E5B84632304 /* WeeklyScheduleView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		01564628BE969E5B84632304 /* WeeklyScheduleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeeklyScheduleView.swift; sourceTree = "<group>"; };
+		065042AB61098288225BF0C5 /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
+		1E1F8A4A7897720C6DA13D46 /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
+		23ECF010C340C71EEC76D0A8 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		31FBCD971D8D0EC82AA9D94F /* RoomsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomsView.swift; sourceTree = "<group>"; };
+		37F0880B847009749691C13D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		416D735280BCBB40E151D3EA /* DateHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DateHelpers.swift; sourceTree = "<group>"; };
+		4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVROrariApp.swift; sourceTree = "<group>"; };
+		7091416BFB06919D662DBD80 /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
+		71810F4912E4B7B00D22177D /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9403179EF835E4DBD2024AA9 /* AppModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		ABBAE4626823721535CE8977 /* UniVRAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVRAPIClient.swift; sourceTree = "<group>"; };
+		B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		D0B9EC35BE5D78C9EF7E880F /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		DA2A10516A089484C67FE748 /* UniVROrari.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UniVROrari.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9473E341F1C5B24D1B974B6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		90FA08E37B7F594B576D8B9A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBF6D5E675D1D4CEAB369400 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		182362D045D044689D9A6A5B /* AppIcon.appiconset */ = {
+			isa = PBXGroup;
+			children = (
+				065042AB61098288225BF0C5 /* Contents.json */,
+			);
+			path = AppIcon.appiconset;
+			sourceTree = "<group>";
+		};
+		28F893D0BB1CAC0C07BD7A69 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4354FAD8ABCD16996E014BF6 /* Assets.xcassets */,
+				F5E43CF80271E48677CE0DCF /* Preview Content */,
+				23ECF010C340C71EEC76D0A8 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		3789FF3CA49BC9A7B9C2B32F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				AF30A27C85B5CEDD088F7614 /* App */,
+				E0113CD09D483862730F07DC /* Domain */,
+				6F4C37C310251A75A2D235F8 /* Data */,
+				94271ED309A3F61CFF80005B /* Features */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		4354FAD8ABCD16996E014BF6 /* Assets.xcassets */ = {
+			isa = PBXGroup;
+			children = (
+				7091416BFB06919D662DBD80 /* Contents.json */,
+				182362D045D044689D9A6A5B /* AppIcon.appiconset */,
+			);
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		6F4C37C310251A75A2D235F8 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				ABBAE4626823721535CE8977 /* UniVRAPIClient.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		6FF6F1F830DA739041AEF288 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C1EE8803F9F7E0C54003D77E /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		94271ED309A3F61CFF80005B /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				E3B6367F9ABB29873B842946 /* WeeklySchedule */,
+				BEF2205B64E364799101B03F /* Rooms */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		96D3D24EE8137C9F51E29CE7 /* Preview Assets.xcassets */ = {
+			isa = PBXGroup;
+			children = (
+				1E1F8A4A7897720C6DA13D46 /* Contents.json */,
+			);
+			path = "Preview Assets.xcassets";
+			sourceTree = "<group>";
+		};
+		AF30A27C85B5CEDD088F7614 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */,
+				F9473E341F1C5B24D1B974B6 /* ContentView.swift */,
+				9403179EF835E4DBD2024AA9 /* AppModel.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		BEF2205B64E364799101B03F /* Rooms */ = {
+			isa = PBXGroup;
+			children = (
+				31FBCD971D8D0EC82AA9D94F /* RoomsView.swift */,
+			);
+			path = Rooms;
+			sourceTree = "<group>";
+		};
+		C0CEC788FF4EE82F631588D9 /* UniVROrari */ = {
+			isa = PBXGroup;
+			children = (
+				3789FF3CA49BC9A7B9C2B32F /* Sources */,
+				28F893D0BB1CAC0C07BD7A69 /* Resources */,
+				71810F4912E4B7B00D22177D /* Info.plist */,
+			);
+			path = UniVROrari;
+			sourceTree = "<group>";
+		};
+		C1EE8803F9F7E0C54003D77E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				37F0880B847009749691C13D /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		E0113CD09D483862730F07DC /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				D0B9EC35BE5D78C9EF7E880F /* Models.swift */,
+				416D735280BCBB40E151D3EA /* DateHelpers.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		E310C2059155B4AB557D9F3F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DA2A10516A089484C67FE748 /* UniVROrari.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E3B6367F9ABB29873B842946 /* WeeklySchedule */ = {
+			isa = PBXGroup;
+			children = (
+				01564628BE969E5B84632304 /* WeeklyScheduleView.swift */,
+			);
+			path = WeeklySchedule;
+			sourceTree = "<group>";
+		};
+		F5E43CF80271E48677CE0DCF /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				96D3D24EE8137C9F51E29CE7 /* Preview Assets.xcassets */,
+				B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		F6143734BC6A5A25A67E852C = {
+			isa = PBXGroup;
+			children = (
+				E310C2059155B4AB557D9F3F /* Products */,
+				6FF6F1F830DA739041AEF288 /* Frameworks */,
+				C0CEC788FF4EE82F631588D9 /* UniVROrari */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7AFB8DAF3653815B1358C205 /* UniVROrari */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 04610E98149998127E2D2103 /* Build configuration list for PBXNativeTarget "UniVROrari" */;
+			buildPhases = (
+				7FE5A823320EC3A63514DE57 /* Sources */,
+				90FA08E37B7F594B576D8B9A /* Frameworks */,
+				0214B36EAC7C192236A10416 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UniVROrari;
+			productName = UniVROrari;
+			productReference = DA2A10516A089484C67FE748 /* UniVROrari.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA3D39BB1A668F397EF0D717 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					7AFB8DAF3653815B1358C205 = {
+						CreatedOnToolsVersion = 26.2;
+						DevelopmentTeam = D3U3S86Y66;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E6531AC962B7CE9B58E78AE3 /* Build configuration list for PBXProject "UniVROrari" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F6143734BC6A5A25A67E852C;
+			productRefGroup = E310C2059155B4AB557D9F3F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7AFB8DAF3653815B1358C205 /* UniVROrari */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0214B36EAC7C192236A10416 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */,
+				B8A04F6513073CB7B90032E6 /* Preview Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7FE5A823320EC3A63514DE57 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */,
+				3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */,
+				79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */,
+				48B0F121C3BC8025B3D78869 /* Models.swift in Sources */,
+				D116384EDB49E2B25744F02E /* DateHelpers.swift in Sources */,
+				8FC7351163185D7EEED91C13 /* UniVRAPIClient.swift in Sources */,
+				EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */,
+				E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		75FE26C54E07FDCAA448AC7C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3U3S86Y66;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = UniVROrari/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.univr.orari;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9DE6D30683A9C05682E7ACC7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A946BCB731826B3372509F7C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F833B3033310BD125CD71C07 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3U3S86Y66;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = UniVROrari/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.univr.orari;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		04610E98149998127E2D2103 /* Build configuration list for PBXNativeTarget "UniVROrari" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F833B3033310BD125CD71C07 /* Release */,
+				75FE26C54E07FDCAA448AC7C /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E6531AC962B7CE9B58E78AE3 /* Build configuration list for PBXProject "UniVROrari" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A946BCB731826B3372509F7C /* Debug */,
+				9DE6D30683A9C05682E7ACC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA3D39BB1A668F397EF0D717 /* Project object */;
+}
