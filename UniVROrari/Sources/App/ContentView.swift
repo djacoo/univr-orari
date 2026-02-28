@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
@@ -6,21 +7,22 @@ struct ContentView: View {
     @State private var setupSelectedCourse: StudyCourse?
     @State private var setupSelectedAcademicYear = DateHelpers.currentAcademicYear()
     @State private var isApplyingSetup = false
+    @State private var showingProfile = false
+    @State private var selectedTab = 0
+    @State private var tabLoaderVisible = false
+    @State private var tabLoaderTask: Task<Void, Never>?
 
     var body: some View {
-        ZStack {
-            LiquidBackground()
-
-            Group {
-                if model.requiresInitialSetup {
-                    setupView
-                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
-                } else {
-                    mainTabs
-                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                }
+        Group {
+            if model.requiresInitialSetup {
+                setupView
+                    .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+            } else {
+                mainTabs
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
+        .background { AppBackground() }
         .animation(.spring(response: 0.48, dampingFraction: 0.86), value: model.requiresInitialSetup)
         .onAppear {
             syncSetupStateFromModel()
@@ -33,30 +35,64 @@ struct ContentView: View {
     }
 
     private var mainTabs: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 WeeklyScheduleView(
                     model: model,
-                    onEditProfile: {
-                        model.reopenInitialSetup()
-                    }
+                    onEditProfile: { showingProfile = true }
                 )
             }
-            .tabItem {
-                Label("Calendario", systemImage: "calendar")
-            }
+            .tabItem { Label("Calendario", systemImage: "calendar") }
+            .tag(0)
 
             NavigationStack {
                 RoomsView(model: model)
             }
-            .tabItem {
-                Label("Aule", systemImage: "door.left.hand.open")
-            }
+            .tabItem { Label("Aule", systemImage: "door.left.hand.open") }
+            .tag(1)
         }
         .tint(Color.uiAccent)
-        .toolbarBackground(Color.uiTabBarBackground, for: .tabBar)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.light, for: .tabBar)
+        .overlay {
+            VStack {
+                Spacer()
+                if tabLoaderVisible {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                            .tint(Color.uiAccent)
+                            .scaleEffect(0.9)
+                        Text(selectedTab == 0 ? "Calendario" : "Aule")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.uiTextPrimary)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .background(
+                        Capsule()
+                            .fill(.regularMaterial)
+                            .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 8)
+                    )
+                    .padding(.bottom, 88)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.34, dampingFraction: 0.82), value: tabLoaderVisible)
+        }
+        .onChange(of: selectedTab) { _, _ in
+            tabLoaderTask?.cancel()
+            tabLoaderVisible = true
+            tabLoaderTask = Task {
+                do {
+                    try await Task.sleep(for: .milliseconds(680))
+                    tabLoaderVisible = false
+                } catch {}
+            }
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView(model: model)
+        }
     }
 
     private var setupView: some View {
@@ -78,38 +114,22 @@ struct ContentView: View {
                 setupContinueButton
                     .padding(.top, 2)
             }
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 22)
             .padding(.vertical, 16)
         }
     }
 
     private var setupHero: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(Color.uiAccent)
-                    .padding(10)
-                    .background(
-                        Circle()
-                            .fill(Color.uiAccent.opacity(0.22))
-                    )
+        VStack(alignment: .leading, spacing: 10) {
+            Text("UniVR Orari")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.uiAccent)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("UniVR Orari")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.uiTextSecondary)
-                    Text("Profilo")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(Color.uiTextPrimary)
-                }
-            }
-
-            Text("Solo il necessario per iniziare")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+            Text("Il tuo orario.")
+                .font(.system(size: 36, weight: .black, design: .rounded))
                 .foregroundStyle(Color.uiTextPrimary)
 
-            Text("Corso, anno di corso e anno accademico. Poi entri subito nel calendario.")
+            Text("Scegli il tuo corso per accedere al calendario lezioni.")
                 .font(.subheadline)
                 .foregroundStyle(Color.uiTextSecondary)
         }
@@ -173,10 +193,6 @@ struct ContentView: View {
                     .fill(Color.uiSurfaceInput)
             )
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.uiStrokeStrong, lineWidth: 1)
-            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
@@ -207,10 +223,6 @@ struct ContentView: View {
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.uiSurfaceInput)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.uiStrokeStrong, lineWidth: 1)
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -251,11 +263,7 @@ struct ContentView: View {
                         .padding(12)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(setupSelectedCourse?.id == course.id ? Color.uiAccent.opacity(0.22) : Color.uiSurfaceInput)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(setupSelectedCourse?.id == course.id ? Color.uiAccent.opacity(0.78) : Color.uiStroke, lineWidth: 1)
+                                .fill(setupSelectedCourse?.id == course.id ? Color.uiAccent.opacity(0.16) : Color.uiSurfaceInput)
                         )
                     }
                     .buttonStyle(.plain)
@@ -348,11 +356,7 @@ struct ContentView: View {
                         : uiAccentGradient
                     )
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .stroke(Color.white.opacity(0.20), lineWidth: 1)
-            )
-            .shadow(color: Color.uiAccent.opacity(selectedCourse == nil ? 0 : 0.36), radius: 14, x: 0, y: 7)
+            .shadow(color: Color.uiAccent.opacity(selectedCourse == nil ? 0 : 0.32), radius: 14, x: 0, y: 7)
         }
         .disabled(selectedCourse == nil || isApplyingSetup)
     }
@@ -392,9 +396,38 @@ struct ContentView: View {
     }
 }
 
-struct LiquidBackground: View {
-    @State private var animate = false
+struct ProfileBackground: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "FDF8F2"), Color(hex: "EDCFB8")],
+                startPoint: .top,
+                endPoint: .bottom
+            )
 
+            Circle()
+                .fill(RadialGradient(
+                    colors: [Color.uiAccent.opacity(0.22), Color.uiAccent.opacity(0)],
+                    center: .center, startRadius: 0, endRadius: 330
+                ))
+                .frame(width: 520, height: 520)
+                .offset(x: 90, y: -170)
+
+            Circle()
+                .fill(RadialGradient(
+                    colors: [Color(hex: "3F6D5D").opacity(0.18), Color(hex: "3F6D5D").opacity(0)],
+                    center: .center, startRadius: 0, endRadius: 280
+                ))
+                .frame(width: 450, height: 450)
+                .offset(x: -110, y: 210)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .drawingGroup()
+        .ignoresSafeArea()
+    }
+}
+
+struct AppBackground: View {
     var body: some View {
         ZStack {
             LinearGradient(
@@ -404,48 +437,22 @@ struct LiquidBackground: View {
             )
 
             Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.uiBlobCyan, Color.uiBlobCyan.opacity(0)],
-                        center: .center,
-                        startRadius: 1,
-                        endRadius: 280
-                    )
-                )
-                .frame(width: 360, height: 360)
-                .offset(x: animate ? -120 : -50, y: animate ? -260 : -210)
-
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.uiBlobBlue, Color.uiBlobBlue.opacity(0)],
-                        center: .center,
-                        startRadius: 1,
-                        endRadius: 320
-                    )
-                )
+                .fill(RadialGradient(colors: [Color.uiBlobCyan, Color.uiBlobCyan.opacity(0)], center: .center, startRadius: 1, endRadius: 310))
                 .frame(width: 390, height: 390)
-                .offset(x: animate ? 150 : 90, y: animate ? 220 : 160)
+                .offset(x: -100, y: -280)
 
             Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.uiBlobViolet, Color.uiBlobViolet.opacity(0)],
-                        center: .center,
-                        startRadius: 1,
-                        endRadius: 250
-                    )
-                )
-                .frame(width: 320, height: 320)
-                .offset(x: animate ? 170 : 120, y: animate ? -210 : -150)
+                .fill(RadialGradient(colors: [Color.uiBlobBlue, Color.uiBlobBlue.opacity(0)], center: .center, startRadius: 1, endRadius: 350))
+                .frame(width: 430, height: 430)
+                .offset(x: 155, y: 240)
+
+            Circle()
+                .fill(RadialGradient(colors: [Color.uiBlobViolet, Color.uiBlobViolet.opacity(0)], center: .center, startRadius: 1, endRadius: 270))
+                .frame(width: 350, height: 350)
+                .offset(x: 175, y: -215)
         }
         .drawingGroup()
         .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 14)) {
-                animate = true
-            }
-        }
     }
 }
 
@@ -462,9 +469,10 @@ struct LiquidCardModifier: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.44), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.5)
             )
-            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 3)
+            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
     }
 }
 
@@ -475,19 +483,19 @@ extension View {
 }
 
 extension Color {
-    static let uiBackgroundTop = Color(hex: "F7F2E8")
-    static let uiBackgroundBottom = Color(hex: "E6EFE2")
+    static let uiBackgroundTop = Color(hex: "F5EFE4")
+    static let uiBackgroundBottom = Color(hex: "D0E9CB")
 
     static let uiAccent = Color(hex: "C65D3D")
     static let uiAccentSecondary = Color(hex: "3F6D5D")
 
-    static let uiBlobCyan = Color(hex: "A3D9C7").opacity(0.55)
-    static let uiBlobBlue = Color(hex: "F1BC8D").opacity(0.35)
-    static let uiBlobViolet = Color(hex: "DCA9BA").opacity(0.30)
+    static let uiBlobCyan = Color(hex: "7ECFB5").opacity(0.78)
+    static let uiBlobBlue = Color(hex: "F0A650").opacity(0.55)
+    static let uiBlobViolet = Color(hex: "D48FB2").opacity(0.50)
 
-    static let uiSurface = Color.white.opacity(0.74)
-    static let uiSurfaceStrong = Color.white.opacity(0.86)
-    static let uiSurfaceInput = Color.white.opacity(0.95)
+    static let uiSurface = Color.white.opacity(0.76)
+    static let uiSurfaceStrong = Color.white.opacity(0.88)
+    static let uiSurfaceInput = Color.white.opacity(0.96)
     static let uiTabBarBackground = Color.white.opacity(0.88)
 
     static let uiStroke = Color.black.opacity(0.08)
@@ -535,5 +543,281 @@ extension String {
             .filter(CharacterSet.alphanumerics.contains)
             .map(String.init)
             .joined()
+    }
+}
+
+// MARK: - Profile
+
+struct ProfileView: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var editingUsername: String = ""
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var showingCoursePicker = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 16) {
+                    avatarCard
+                    courseCard
+                    returnButton
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 16)
+            }
+            .background { ProfileBackground() }
+            .navigationTitle("Profilo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Fatto") {
+                        saveAndDismiss()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .tint(Color.uiAccent)
+                }
+            }
+            .navigationDestination(isPresented: $showingCoursePicker) {
+                CoursePickerView(model: model)
+            }
+        }
+        .onAppear {
+            editingUsername = model.username
+        }
+        .onChange(of: photoPickerItem) { _, item in
+            Task {
+                if let data = try? await item?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    model.saveProfileImage(image)
+                }
+            }
+        }
+    }
+
+    private var avatarCard: some View {
+        VStack(spacing: 16) {
+            PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                avatarCircle
+                    .overlay(alignment: .bottomTrailing) {
+                        Image(systemName: "camera.fill")
+                            .font(.caption.weight(.bold))
+                            .padding(7)
+                            .background(Circle().fill(Color.uiAccent))
+                            .foregroundStyle(.white)
+                            .offset(x: 4, y: 4)
+                    }
+            }
+            .buttonStyle(.plain)
+
+            TextField("Il tuo nome", text: $editingUsername)
+                .multilineTextAlignment(.center)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Color.uiTextPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.uiSurfaceInput)
+                )
+        }
+        .frame(maxWidth: .infinity)
+        .liquidCard(cornerRadius: 24, tint: Color.uiSurfaceStrong)
+    }
+
+    @ViewBuilder
+    private var avatarCircle: some View {
+        if let image = model.profileImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 88, height: 88)
+                .clipShape(Circle())
+        } else {
+            ZStack {
+                Circle()
+                    .fill(uiAccentGradient)
+                    .frame(width: 88, height: 88)
+                let initial = editingUsername.trimmingCharacters(in: .whitespaces).prefix(1).uppercased()
+                if initial.isEmpty {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 34))
+                        .foregroundStyle(.white)
+                } else {
+                    Text(initial)
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+    }
+
+    private var courseCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Corso")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.uiTextSecondary)
+                    Text(model.selectedCourse?.name ?? "Nessun corso selezionato")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.uiTextPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button {
+                    showingCoursePicker = true
+                } label: {
+                    Text("Cambia")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.uiAccent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.uiAccent.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Text(model.selectedAcademicYearLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.uiTextSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.uiSurfaceInput))
+
+                Spacer()
+
+                HStack(spacing: 2) {
+                    ForEach(1...max(1, model.selectedCourseMaxYear), id: \.self) { year in
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                model.selectedCourseYear = year
+                            }
+                        } label: {
+                            Text("\(year)°")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(
+                                    model.selectedCourseYear == year
+                                        ? RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.uiAccent)
+                                        : RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.clear)
+                                )
+                                .foregroundStyle(
+                                    model.selectedCourseYear == year ? Color.white : Color.uiTextSecondary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(3)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.uiSurfaceInput)
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
+    }
+
+    private var returnButton: some View {
+        Button {
+            saveAndDismiss()
+        } label: {
+            HStack {
+                Spacer()
+                Label("Torna al calendario", systemImage: "calendar")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+            }
+            .padding(.vertical, 15)
+            .foregroundStyle(Color.uiAccent)
+            .background(
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(Color.uiAccent.opacity(0.11))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func saveAndDismiss() {
+        model.username = editingUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        dismiss()
+    }
+}
+
+private struct CoursePickerView: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+
+    private var filteredCourses: [StudyCourse] {
+        let query = searchText.searchNormalized
+        guard !query.isEmpty else { return Array(model.allCourses.prefix(40)) }
+        return model.allCourses.filter { $0.name.searchNormalized.contains(query) }
+    }
+
+    var body: some View {
+        ZStack {
+            AppBackground()
+
+            if model.isLoadingCourses {
+                ProgressView()
+                    .tint(Color.uiAccent)
+            } else {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 8) {
+                        ForEach(filteredCourses) { course in
+                            Button {
+                                model.selectedCourse = course
+                                dismiss()
+                            } label: {
+                                HStack(alignment: .top, spacing: 11) {
+                                    Image(systemName: model.selectedCourse?.id == course.id ? "checkmark.circle.fill" : "circle")
+                                        .font(.headline)
+                                        .foregroundStyle(model.selectedCourse?.id == course.id ? Color.uiAccent : Color.uiTextSecondary)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(course.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .multilineTextAlignment(.leading)
+                                            .foregroundStyle(Color.uiTextPrimary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                                        Text(course.facultyName)
+                                            .font(.caption)
+                                            .foregroundStyle(Color.uiTextMuted)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                }
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(model.selectedCourse?.id == course.id ? Color.uiAccent.opacity(0.14) : Color.uiSurface)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .searchable(text: $searchText, prompt: "Cerca corso")
+            }
+        }
+        .navigationTitle("Cambia corso")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if model.allCourses.isEmpty {
+                await model.loadCourses()
+            }
+        }
     }
 }

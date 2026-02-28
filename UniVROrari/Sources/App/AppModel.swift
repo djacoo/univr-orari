@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -96,6 +97,23 @@ final class AppModel: ObservableObject {
     }
     @Published private(set) var allRoomNames: [String] = []
 
+    @Published var username: String = "" {
+        didSet { persistPreferences() }
+    }
+    @Published var profileImage: UIImage?
+
+    private static let profileImageURL: URL = {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("profile_photo.jpg")
+    }()
+
+    func saveProfileImage(_ image: UIImage) {
+        profileImage = image
+        if let data = image.jpegData(compressionQuality: 0.85) {
+            try? data.write(to: Self.profileImageURL)
+        }
+    }
+
     @Published var isLoadingCourses = false
     @Published var isLoadingLessons = false
     @Published var isLoadingBuildings = false
@@ -120,6 +138,11 @@ final class AppModel: ObservableObject {
         hasCompletedInitialSetup = storedPreferences.hasCompletedInitialSetup ?? (storedPreferences.selectedCourseID != nil)
         preferredCourseID = storedPreferences.selectedCourseID
         preferredBuildingID = storedPreferences.selectedBuildingID
+        username = storedPreferences.username ?? ""
+        if let data = try? Data(contentsOf: Self.profileImageURL),
+           let image = UIImage(data: data) {
+            profileImage = image
+        }
 
         let cachedCourses = localStore.loadCourses()
         if !cachedCourses.isEmpty {
@@ -299,8 +322,6 @@ final class AppModel: ObservableObject {
         isLoadingLessons = true
         lessonsError = nil
 
-        defer { isLoadingLessons = false }
-
         let key = lessonsCacheKey(
             courseID: selectedCourse.id,
             courseYear: selectedCourseYear,
@@ -317,7 +338,10 @@ final class AppModel: ObservableObject {
             )
             lessons = fetchedLessons
             localStore.saveLessonsCache(forKey: key, lessons: fetchedLessons)
+            isLoadingLessons = false
         } catch {
+            if Self.isCancelledError(error) { return }
+            isLoadingLessons = false
             if let cached = localStore.loadLessonsCache(forKey: key) {
                 lessons = cached.lessons
                 lessonsError = "Connessione non disponibile. Mostro orario offline aggiornato al \(Self.cacheDateFormatter.string(from: cached.savedAt))."
@@ -330,8 +354,6 @@ final class AppModel: ObservableObject {
     func refreshRooms() async {
         isLoadingRooms = true
         roomsError = nil
-
-        defer { isLoadingRooms = false }
 
         let key = roomsCacheKey(date: selectedRoomsDate, buildingID: selectedBuilding?.id)
 
@@ -347,7 +369,10 @@ final class AppModel: ObservableObject {
                 occupiedRooms: response.agendas,
                 freeRoomSlots: response.freeSlots
             )
+            isLoadingRooms = false
         } catch {
+            if Self.isCancelledError(error) { return }
+            isLoadingRooms = false
             if let cached = localStore.loadRoomsCache(forKey: key) {
                 occupiedRooms = cached.occupiedRooms
                 freeRoomSlots = cached.freeRoomSlots
@@ -429,7 +454,8 @@ final class AppModel: ObservableObject {
                 selectedCourseYear: selectedCourseYear,
                 selectedBuildingID: selectedBuilding?.id,
                 selectedAcademicYear: selectedAcademicYear,
-                hasCompletedInitialSetup: hasCompletedInitialSetup
+                hasCompletedInitialSetup: hasCompletedInitialSetup,
+                username: username.isEmpty ? nil : username
             )
         )
     }
@@ -483,6 +509,12 @@ final class AppModel: ObservableObject {
         return "rooms:\(buildingToken):\(dateValue)"
     }
 
+    private static func isCancelledError(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError, urlError.code == .cancelled { return true }
+        return false
+    }
+
     private static let cacheDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "it_IT")
@@ -498,13 +530,15 @@ struct StoredPreferences: Codable {
     var selectedBuildingID: String?
     var selectedAcademicYear: Int?
     var hasCompletedInitialSetup: Bool?
+    var username: String?
 
     static let `default` = StoredPreferences(
         selectedCourseID: nil,
         selectedCourseYear: 1,
         selectedBuildingID: nil,
         selectedAcademicYear: nil,
-        hasCompletedInitialSetup: nil
+        hasCompletedInitialSetup: nil,
+        username: nil
     )
 }
 

@@ -13,7 +13,7 @@ struct RoomsView: View {
                 roomsStateSection
                 roomScheduleSection
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 24)
             .padding(.vertical, 14)
         }
         .navigationTitle("Aule")
@@ -38,13 +38,15 @@ struct RoomsView: View {
     private var filterCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             if model.isLoadingBuildings {
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     ProgressView()
                         .tint(Color.uiAccent)
+                        .scaleEffect(1.1)
                     Text("Caricamento edifici...")
                         .font(.subheadline)
                         .foregroundStyle(Color.uiTextSecondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else if let buildingsError = model.buildingsError, model.buildings.isEmpty {
                 Text(buildingsError)
                     .font(.subheadline)
@@ -90,10 +92,6 @@ struct RoomsView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.uiSurfaceInput)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.uiStrokeStrong, lineWidth: 1)
-            )
 
             if !roomSuggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -111,11 +109,7 @@ struct RoomsView: View {
                                     .padding(.vertical, 8)
                                     .background(
                                         Capsule()
-                                            .fill(selectedRoomName == roomName ? Color.uiAccent.opacity(0.22) : Color.uiSurfaceInput)
-                                    )
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(selectedRoomName == roomName ? Color.uiAccent.opacity(0.85) : Color.uiStroke, lineWidth: 1)
+                                            .fill(selectedRoomName == roomName ? Color.uiAccent.opacity(0.18) : Color.uiSurfaceInput)
                                     )
                                     .foregroundStyle(selectedRoomName == roomName ? Color.uiAccent : Color.uiTextPrimary)
                             }
@@ -132,14 +126,17 @@ struct RoomsView: View {
     @ViewBuilder
     private var roomsStateSection: some View {
         if model.isLoadingRooms {
-            HStack(spacing: 10) {
+            VStack(spacing: 16) {
                 ProgressView()
                     .tint(Color.uiAccent)
+                    .scaleEffect(1.5)
+                    .frame(height: 28)
                 Text("Caricamento disponibilità aule...")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
         } else if let roomsError = model.roomsError {
             let isOffline = roomsError.localizedCaseInsensitiveContains("offline")
@@ -216,10 +213,6 @@ struct RoomsView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(Color.green.opacity(0.14))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.green.opacity(0.26), lineWidth: 1)
                             )
                         }
                     }
@@ -303,38 +296,48 @@ private struct RoomLessonRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            Rectangle()
-                .fill(Color.uiAccent)
-                .frame(width: 4)
+            LinearGradient(
+                colors: [Color.uiAccent, Color.uiAccent.opacity(0.3)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(width: 4)
 
-            VStack(alignment: .leading, spacing: 7) {
-                Label("\(lesson.fromTime) - \(lesson.toTime)", systemImage: "clock.fill")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.uiAccent)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 9, weight: .bold))
+                    Text("\(lesson.fromTime) – \(lesson.toTime)")
+                        .font(.caption.weight(.bold))
+                        .kerning(0.2)
+                }
+                .foregroundStyle(Color.uiAccent)
 
                 Text(lesson.subject)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.uiTextPrimary)
 
-                Text(lesson.professor)
-                    .font(.caption)
-                    .foregroundStyle(Color.uiTextSecondary)
-
-                Text(lesson.courseName)
-                    .font(.caption)
-                    .foregroundStyle(Color.uiTextMuted)
+                HStack(spacing: 10) {
+                    if !lesson.professor.isEmpty {
+                        Label(lesson.professor, systemImage: "person.fill")
+                            .lineLimit(1)
+                    }
+                    if !lesson.courseName.isEmpty {
+                        Text(lesson.courseName)
+                            .lineLimit(1)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(Color.uiTextSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 11)
         }
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.uiSurfaceInput)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.uiStroke, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
