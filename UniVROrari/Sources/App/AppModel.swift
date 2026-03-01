@@ -38,6 +38,7 @@ final class AppModel: ObservableObject {
                 return
             }
             persistPreferences()
+            loadSubjectFilter()
         }
     }
 
@@ -68,6 +69,7 @@ final class AppModel: ObservableObject {
             lessons = []
             lessonsError = nil
             persistPreferences()
+            loadSubjectFilter()
         }
     }
 
@@ -77,10 +79,21 @@ final class AppModel: ObservableObject {
 
     @Published var lessons: [Lesson] = [] {
         didSet {
-            lessonsGroupedByDay = Self.groupLessons(lessons)
+            accumulateKnownSubjects(from: lessons)
+            lessonsGroupedByDay = Self.groupLessons(lessons, excluding: hiddenSubjects)
         }
     }
     @Published private(set) var lessonsGroupedByDay: [(date: Date, lessons: [Lesson])] = []
+
+    @Published private(set) var knownSubjects: [String] = []
+    @Published var hiddenSubjects: Set<String> = [] {
+        didSet {
+            guard !_isLoadingSubjectFilter else { return }
+            lessonsGroupedByDay = Self.groupLessons(lessons, excluding: hiddenSubjects)
+            saveSubjectFilter()
+        }
+    }
+    private var _isLoadingSubjectFilter = false
 
     @Published var buildings: [Building] = []
     @Published var selectedBuilding: Building? {
@@ -176,8 +189,9 @@ final class AppModel: ObservableObject {
         academicYearLabel(for: selectedAcademicYear)
     }
 
-    private static func groupLessons(_ lessons: [Lesson]) -> [(date: Date, lessons: [Lesson])] {
-        let grouped = Dictionary(grouping: lessons, by: { DateHelpers.startOfDay(for: $0.date) })
+    private static func groupLessons(_ lessons: [Lesson], excluding hiddenSubjects: Set<String> = []) -> [(date: Date, lessons: [Lesson])] {
+        let visible = hiddenSubjects.isEmpty ? lessons : lessons.filter { !hiddenSubjects.contains($0.title) }
+        let grouped = Dictionary(grouping: visible, by: { DateHelpers.startOfDay(for: $0.date) })
         return grouped
             .map { day, dayLessons in
                 (day, dayLessons.sorted { lhs, rhs in lhs.startTime < rhs.startTime })
@@ -467,6 +481,56 @@ final class AppModel: ObservableObject {
         return String(format: "%d/%02d", academicYear, endYearShort)
     }
 
+    func toggleSubjectVisibility(_ title: String) {
+        if hiddenSubjects.contains(title) {
+            hiddenSubjects.remove(title)
+        } else {
+            hiddenSubjects.insert(title)
+        }
+    }
+
+    private func accumulateKnownSubjects(from lessons: [Lesson]) {
+        guard !lessons.isEmpty else { return }
+        var changed = false
+        for lesson in lessons where !knownSubjects.contains(lesson.title) {
+            knownSubjects.append(lesson.title)
+            changed = true
+        }
+        if changed {
+            saveSubjectFilter()
+        }
+    }
+
+    private func subjectFilterKey() -> String? {
+        guard let courseID = selectedCourse?.id else { return nil }
+        return "\(courseID):\(selectedCourseYear)"
+    }
+
+    private func saveSubjectFilter() {
+        guard let key = subjectFilterKey() else { return }
+        localStore.saveSubjectFilter(
+            SubjectFilterEntry(knownSubjects: knownSubjects, hiddenSubjects: Array(hiddenSubjects)),
+            forKey: key
+        )
+    }
+
+    private func loadSubjectFilter() {
+        _isLoadingSubjectFilter = true
+        defer { _isLoadingSubjectFilter = false }
+        guard let key = subjectFilterKey() else {
+            knownSubjects = []
+            hiddenSubjects = []
+            return
+        }
+        if let entry = localStore.loadSubjectFilter(forKey: key) {
+            knownSubjects = entry.knownSubjects
+            hiddenSubjects = Set(entry.hiddenSubjects)
+        } else {
+            knownSubjects = []
+            hiddenSubjects = []
+        }
+    }
+
     private func clampWeekStartWithinAcademicYear() {
         if weekStartDate < _weekBounds.start {
             weekStartDate = _weekBounds.start
@@ -557,6 +621,11 @@ struct RoomsCacheEntry: Codable {
     let freeRoomSlots: [FreeRoomSlot]
 }
 
+struct SubjectFilterEntry: Codable {
+    var knownSubjects: [String]
+    var hiddenSubjects: [String]
+}
+
 final class LocalDataStore {
     private enum Key {
         static let preferences = "univr.preferences"
@@ -564,6 +633,7 @@ final class LocalDataStore {
         static let buildings = "univr.cache.buildings"
         static let lessons = "univr.cache.lessons"
         static let rooms = "univr.cache.rooms"
+        static let subjectFilter = "univr.subjectFilter"
     }
 
     private let defaults: UserDefaults
@@ -624,6 +694,17 @@ final class LocalDataStore {
     func loadRoomsCache(forKey key: String) -> RoomsCacheEntry? {
         let entries = loadValue([RoomsCacheEntry].self, forKey: Key.rooms) ?? []
         return entries.first(where: { $0.key == key })
+    }
+
+    func loadSubjectFilter(forKey key: String) -> SubjectFilterEntry? {
+        let all = loadValue([String: SubjectFilterEntry].self, forKey: Key.subjectFilter) ?? [:]
+        return all[key]
+    }
+
+    func saveSubjectFilter(_ entry: SubjectFilterEntry, forKey key: String) {
+        var all = loadValue([String: SubjectFilterEntry].self, forKey: Key.subjectFilter) ?? [:]
+        all[key] = entry
+        saveValue(all, forKey: Key.subjectFilter)
     }
 
     func saveRoomsCache(forKey key: String, occupiedRooms: [RoomAgenda], freeRoomSlots: [FreeRoomSlot]) {

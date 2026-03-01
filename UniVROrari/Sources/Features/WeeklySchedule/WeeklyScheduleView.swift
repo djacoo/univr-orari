@@ -6,6 +6,7 @@ struct WeeklyScheduleView: View {
 
     private enum WeekViewMode { case list, grid }
     @State private var viewMode: WeekViewMode = .list
+    @State private var showingSubjectFilter = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -70,6 +71,18 @@ struct WeeklyScheduleView: View {
 
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    showingSubjectFilter = true
+                } label: {
+                    Image(systemName: model.hiddenSubjects.isEmpty ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .tint(model.hiddenSubjects.isEmpty ? Color.uiTextSecondary : Color.uiAccent)
+                .accessibilityLabel("Filtra materie")
+                .disabled(model.knownSubjects.isEmpty)
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     onEditProfile()
                 } label: {
                     Label("Profilo", systemImage: "person.crop.circle.badge.gearshape")
@@ -80,6 +93,9 @@ struct WeeklyScheduleView: View {
         }
         .refreshable {
             await model.refreshLessons()
+        }
+        .sheet(isPresented: $showingSubjectFilter) {
+            SubjectFilterSheet(model: model)
         }
         .task(id: "\(model.selectedCourse?.id ?? "")|\(model.weekStartDate.timeIntervalSince1970)|\(model.selectedAcademicYear)|\(model.selectedCourseYear)") {
             guard !model.requiresInitialSetup else { return }
@@ -235,6 +251,26 @@ struct WeeklyScheduleView: View {
                 Text("Cambia settimana o aggiorna il profilo se necessario.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
+        } else if model.lessonsGroupedByDay.isEmpty && !model.hiddenSubjects.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Nessuna materia visibile")
+                    .font(.headline)
+                    .foregroundStyle(Color.uiTextPrimary)
+                Text("Hai nascosto tutte le materie di questa settimana.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.uiTextSecondary)
+                Button {
+                    model.hiddenSubjects = []
+                } label: {
+                    Label("Mostra tutte le materie", systemImage: "line.3.horizontal.decrease.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.uiAccent)
+                        .padding(.top, 4)
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
@@ -469,5 +505,86 @@ private struct GridLessonPill: View {
                 .fill(Color.uiSurfaceInput)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+// MARK: - Subject Filter
+
+private struct SubjectFilterSheet: View {
+    @ObservedObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Seleziona le materie da visualizzare nel calendario")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.uiTextSecondary)
+                        .padding(.horizontal, 4)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(model.knownSubjects.enumerated()), id: \.element) { index, title in
+                            let visible = !model.hiddenSubjects.contains(title)
+                            Button {
+                                model.toggleSubjectVisibility(title)
+                            } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: visible ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3)
+                                        .foregroundStyle(visible ? Color.uiAccent : Color.uiTextMuted)
+
+                                    Text(title)
+                                        .font(.subheadline)
+                                        .foregroundStyle(visible ? Color.uiTextPrimary : Color.uiTextMuted)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(title)
+                            .accessibilityAddTraits(visible ? .isSelected : [])
+
+                            if index < model.knownSubjects.count - 1 {
+                                Divider()
+                                    .padding(.leading, 54)
+                            }
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.uiSurface)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .background { AppBackground() }
+            .navigationTitle("Materie")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Mostra tutto") {
+                        model.hiddenSubjects = []
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .tint(Color.uiTextSecondary)
+                    .disabled(model.hiddenSubjects.isEmpty)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Fatto") { dismiss() }
+                        .font(.subheadline.weight(.semibold))
+                        .tint(Color.uiAccent)
+                }
+            }
+        }
     }
 }
