@@ -41,6 +41,8 @@ struct WeeklyScheduleView: View {
                             .foregroundStyle(viewMode == .list ? .white : Color.uiTextSecondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Vista lista")
+                    .accessibilityAddTraits(viewMode == .list ? .isSelected : [])
 
                     Button {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) { viewMode = .grid }
@@ -56,6 +58,8 @@ struct WeeklyScheduleView: View {
                             .foregroundStyle(viewMode == .grid ? .white : Color.uiTextSecondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Vista griglia")
+                    .accessibilityAddTraits(viewMode == .grid ? .isSelected : [])
                 }
                 .padding(3)
                 .background(
@@ -121,6 +125,8 @@ struct WeeklyScheduleView: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Anno \(year)")
+                        .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                     }
                 }
                 .padding(3)
@@ -155,6 +161,7 @@ struct WeeklyScheduleView: View {
             .buttonStyle(.plain)
             .foregroundStyle(model.canGoPreviousWeek ? Color.uiTextPrimary : Color.uiTextMuted)
             .disabled(!model.canGoPreviousWeek)
+            .accessibilityLabel("Settimana precedente")
 
             Button {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
@@ -169,6 +176,7 @@ struct WeeklyScheduleView: View {
                     .foregroundStyle(Color.uiAccent)
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Torna alla settimana corrente")
 
             Button {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
@@ -183,6 +191,7 @@ struct WeeklyScheduleView: View {
             .buttonStyle(.plain)
             .foregroundStyle(model.canGoNextWeek ? Color.uiTextPrimary : Color.uiTextMuted)
             .disabled(!model.canGoNextWeek)
+            .accessibilityLabel("Settimana successiva")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 20, tint: Color.uiSurface)

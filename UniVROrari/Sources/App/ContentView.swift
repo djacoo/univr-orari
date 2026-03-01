@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
@@ -197,6 +198,8 @@ struct ContentView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Anno \(year)")
+                    .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                 }
             }
             .background(
@@ -278,6 +281,9 @@ struct ContentView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(course.name)
+                    .accessibilityHint(course.facultyName)
+                    .accessibilityAddTraits(setupSelectedCourse?.id == course.id ? .isSelected : [])
                 }
             }
         }
@@ -688,6 +694,8 @@ struct ProfileView: View {
                     }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Foto profilo")
+            .accessibilityHint("Tocca per cambiare la foto")
 
             TextField("Il tuo nome", text: $editingUsername)
                 .multilineTextAlignment(.center)
@@ -757,6 +765,7 @@ struct ProfileView: View {
                         .background(Capsule().fill(Color.uiAccent.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Cambia corso")
             }
 
             Divider()
@@ -792,6 +801,8 @@ struct ProfileView: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Anno \(year)")
+                        .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                     }
                 }
                 .padding(3)
@@ -882,6 +893,9 @@ private struct CoursePickerView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(course.name)
+                            .accessibilityHint(course.facultyName)
+                            .accessibilityAddTraits(model.selectedCourse?.id == course.id ? .isSelected : [])
                         }
                     }
                     .padding(.horizontal, 16)

@@ -115,6 +115,8 @@ struct RoomsView: View {
                                     .foregroundStyle(selectedRoomName == roomName ? Color.uiAccent : Color.uiTextPrimary)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(roomName)
+                            .accessibilityAddTraits(selectedRoomName == roomName ? .isSelected : [])
                         }
                     }
                 }
