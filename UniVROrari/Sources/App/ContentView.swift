@@ -646,6 +646,7 @@ struct ProfileView: View {
                 VStack(spacing: 16) {
                     avatarCard
                     courseCard
+                    workerCard
                     returnButton
                 }
                 .padding(.horizontal, 22)
@@ -816,6 +817,40 @@ struct ProfileView: View {
         .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
     }
 
+    private var workerCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $model.isWorker) {
+                Label("Lavoro anche", systemImage: "briefcase.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.uiTextPrimary)
+            }
+            .tint(Color.uiAccent)
+
+            if model.isWorker {
+                Divider()
+                    .padding(.top, 14)
+
+                Text("Turni settimanali")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.uiTextSecondary)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+
+                VStack(spacing: 0) {
+                    ForEach(model.workShifts.indices, id: \.self) { index in
+                        WorkShiftRow(shift: $model.workShifts[index])
+                        if index < model.workShifts.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.isWorker)
+    }
+
     private var returnButton: some View {
         Button {
             saveAndDismiss()
@@ -839,6 +874,86 @@ struct ProfileView: View {
     private func saveAndDismiss() {
         model.username = editingUsername.trimmingCharacters(in: .whitespacesAndNewlines)
         dismiss()
+    }
+}
+
+private struct WorkShiftRow: View {
+    @Binding var shift: WorkShift
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(shift.weekdayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(shift.isEnabled ? Color.uiTextPrimary : Color.uiTextMuted)
+                Spacer()
+                Toggle("", isOn: $shift.isEnabled)
+                    .labelsHidden()
+                    .tint(Color.uiAccent)
+            }
+            .padding(.vertical, 12)
+
+            if shift.isEnabled {
+                HStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Inizio")
+                            .font(.caption)
+                            .foregroundStyle(Color.uiTextSecondary)
+                        DatePicker("", selection: startTimeBinding, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .tint(Color.uiAccent)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Fine")
+                            .font(.caption)
+                            .foregroundStyle(Color.uiTextSecondary)
+                        DatePicker("", selection: endTimeBinding, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .tint(Color.uiAccent)
+                    }
+                    Spacer()
+                }
+                .padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: shift.isEnabled)
+    }
+
+    private var startTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                var c = DateComponents()
+                c.hour = shift.startHour
+                c.minute = shift.startMinute
+                return Calendar.current.date(from: c) ?? Date()
+            },
+            set: { date in
+                let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+                var updated = shift
+                updated.startHour = c.hour ?? 0
+                updated.startMinute = c.minute ?? 0
+                shift = updated
+            }
+        )
+    }
+
+    private var endTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                var c = DateComponents()
+                c.hour = shift.endHour
+                c.minute = shift.endMinute
+                return Calendar.current.date(from: c) ?? Date()
+            },
+            set: { date in
+                let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+                var updated = shift
+                updated.endHour = c.hour ?? 0
+                updated.endMinute = c.minute ?? 0
+                shift = updated
+            }
+        )
     }
 }
 

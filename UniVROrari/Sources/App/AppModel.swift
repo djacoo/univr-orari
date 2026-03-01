@@ -117,6 +117,13 @@ final class AppModel: ObservableObject {
     }
     @Published var profileImage: UIImage?
 
+    @Published var isWorker: Bool = false {
+        didSet { persistPreferences() }
+    }
+    @Published var workShifts: [WorkShift] = WorkShift.defaults {
+        didSet { localStore.saveWorkShifts(workShifts) }
+    }
+
     private static let profileImageURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("profile_photo.jpg")
@@ -158,6 +165,9 @@ final class AppModel: ObservableObject {
            let image = UIImage(data: data) {
             profileImage = image
         }
+
+        isWorker = storedPreferences.isWorker ?? false
+        workShifts = localStore.loadWorkShifts() ?? WorkShift.defaults
 
         let cachedCourses = localStore.loadCourses()
         if !cachedCourses.isEmpty {
@@ -471,9 +481,17 @@ final class AppModel: ObservableObject {
                 selectedBuildingID: selectedBuilding?.id,
                 selectedAcademicYear: selectedAcademicYear,
                 hasCompletedInitialSetup: hasCompletedInitialSetup,
-                username: username.isEmpty ? nil : username
+                username: username.isEmpty ? nil : username,
+                isWorker: isWorker
             )
         )
+    }
+
+    func workShift(for date: Date) -> WorkShift? {
+        guard isWorker else { return nil }
+        let weekday = DateHelpers.italianCalendar.component(.weekday, from: date)
+        let index = (weekday + 5) % 7
+        return workShifts.first(where: { $0.weekday == index && $0.isEnabled })
     }
 
     func academicYearLabel(for academicYear: Int) -> String {
@@ -597,6 +615,7 @@ struct StoredPreferences: Codable {
     var selectedAcademicYear: Int?
     var hasCompletedInitialSetup: Bool?
     var username: String?
+    var isWorker: Bool?
 
     static let `default` = StoredPreferences(
         selectedCourseID: nil,
@@ -604,7 +623,8 @@ struct StoredPreferences: Codable {
         selectedBuildingID: nil,
         selectedAcademicYear: nil,
         hasCompletedInitialSetup: nil,
-        username: nil
+        username: nil,
+        isWorker: nil
     )
 }
 
@@ -634,6 +654,7 @@ final class LocalDataStore {
         static let lessons = "univr.cache.lessons"
         static let rooms = "univr.cache.rooms"
         static let subjectFilter = "univr.subjectFilter"
+        static let workShifts = "univr.workShifts"
     }
 
     private let defaults: UserDefaults
@@ -705,6 +726,14 @@ final class LocalDataStore {
         var all = loadValue([String: SubjectFilterEntry].self, forKey: Key.subjectFilter) ?? [:]
         all[key] = entry
         saveValue(all, forKey: Key.subjectFilter)
+    }
+
+    func loadWorkShifts() -> [WorkShift]? {
+        loadValue([WorkShift].self, forKey: Key.workShifts)
+    }
+
+    func saveWorkShifts(_ shifts: [WorkShift]) {
+        saveValue(shifts, forKey: Key.workShifts)
     }
 
     func saveRoomsCache(forKey key: String, occupiedRooms: [RoomAgenda], freeRoomSlots: [FreeRoomSlot]) {

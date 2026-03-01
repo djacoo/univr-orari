@@ -206,7 +206,7 @@ struct RoomsView: View {
                         ForEach(selectedRoomFreeSlots) { slot in
                             HStack(spacing: 10) {
                                 Image(systemName: "checkmark.seal.fill")
-                                    .foregroundStyle(Color.green)
+                                    .foregroundStyle(Color.uiAccentSecondary)
                                 Text("\(slot.fromTime) - \(slot.toTime)")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.uiTextPrimary)
@@ -215,7 +215,7 @@ struct RoomsView: View {
                             .padding(10)
                             .background(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.green.opacity(0.14))
+                                    .fill(Color.uiAccentSecondary.opacity(0.10))
                             )
                         }
                     }

@@ -73,3 +73,24 @@ struct FreeRoomSlot: Identifiable, Hashable, Codable {
     let fromTime: String
     let toTime: String
 }
+
+struct WorkShift: Codable {
+    var weekday: Int     // 0 = Monday … 6 = Sunday
+    var isEnabled: Bool
+    var startHour: Int
+    var startMinute: Int
+    var endHour: Int
+    var endMinute: Int
+
+    var weekdayName: String { WorkShift.weekdayNames[weekday] }
+    var startTimeString: String { String(format: "%02d:%02d", startHour, startMinute) }
+    var endTimeString: String { String(format: "%02d:%02d", endHour, endMinute) }
+
+    private static let weekdayNames = [
+        "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"
+    ]
+
+    static let defaults: [WorkShift] = (0..<7).map { day in
+        WorkShift(weekday: day, isEnabled: false, startHour: 9, startMinute: 0, endHour: 17, endMinute: 0)
+    }
+}

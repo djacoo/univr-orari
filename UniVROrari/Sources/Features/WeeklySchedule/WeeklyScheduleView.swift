@@ -188,7 +188,7 @@ struct WeeklyScheduleView: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(Color.uiAccent.opacity(0.18)))
+                    .background(Capsule().fill(Color.uiSurfaceStrong))
                     .foregroundStyle(Color.uiAccent)
             }
             .buttonStyle(.plain)
@@ -306,23 +306,31 @@ struct WeeklyScheduleView: View {
 
     @ViewBuilder
     private var lessonDayCards: some View {
-        if !model.lessonsGroupedByDay.isEmpty {
+        if !calendarDayDates.isEmpty {
             LazyVStack(spacing: 12) {
-                ForEach(model.lessonsGroupedByDay, id: \.date) { group in
-                    let isToday = Calendar.current.isDateInToday(group.date)
+                ForEach(calendarDayDates, id: \.self) { date in
+                    let isToday = Calendar.current.isDateInToday(date)
+                    let dayLessons = lessonsForDay(date)
+                    let dayShift = model.workShift(for: date)
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(isToday ? "Oggi" : DateHelpers.dayMonthFormatter.string(from: group.date).capitalized)
+                        Text(isToday ? "Oggi" : DateHelpers.dayMonthFormatter.string(from: date).capitalized)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(isToday ? .white : Color.uiAccent)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(
-                                Capsule().fill(isToday ? Color.uiAccent : Color.uiAccent.opacity(0.12))
+                                Capsule().fill(isToday ? Color.uiAccent : Color.uiSurfaceInput)
                             )
 
-                        VStack(spacing: 8) {
-                            ForEach(group.lessons) { lesson in
-                                LessonCard(lesson: lesson)
+                        if let shift = dayShift {
+                            WorkShiftCard(shift: shift)
+                        }
+
+                        if !dayLessons.isEmpty {
+                            VStack(spacing: 8) {
+                                ForEach(dayLessons) { lesson in
+                                    LessonCard(lesson: lesson)
+                                }
                             }
                         }
                     }
@@ -331,6 +339,25 @@ struct WeeklyScheduleView: View {
                 }
             }
         }
+    }
+
+    private var calendarDayDates: [Date] {
+        var days = Set(model.lessonsGroupedByDay.map { DateHelpers.startOfDay(for: $0.date) })
+        if model.isWorker {
+            for shift in model.workShifts where shift.isEnabled {
+                if let day = DateHelpers.italianCalendar.date(byAdding: .day, value: shift.weekday, to: model.weekStartDate) {
+                    days.insert(DateHelpers.startOfDay(for: day))
+                }
+            }
+        }
+        return days.sorted()
+    }
+
+    private func lessonsForDay(_ date: Date) -> [Lesson] {
+        let start = DateHelpers.startOfDay(for: date)
+        return model.lessonsGroupedByDay.first(where: {
+            DateHelpers.startOfDay(for: $0.date) == start
+        })?.lessons ?? []
     }
 }
 
@@ -391,6 +418,44 @@ private struct LessonCard: View {
             return lesson.room
         }
         return "\(lesson.room) — \(building)"
+    }
+}
+
+private struct WorkShiftCard: View {
+    let shift: WorkShift
+
+    var body: some View {
+        HStack(spacing: 0) {
+            LinearGradient(
+                colors: [Color.uiAccentSecondary, Color.uiAccentSecondary.opacity(0.3)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(width: 4)
+
+            HStack(spacing: 10) {
+                Image(systemName: "briefcase.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.uiAccentSecondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Turno lavorativo")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.uiAccentSecondary)
+                    Text("\(shift.startTimeString) – \(shift.endTimeString)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.uiTextPrimary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.uiAccentSecondary.opacity(0.08))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
