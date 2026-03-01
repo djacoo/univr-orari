@@ -298,7 +298,7 @@ struct WeeklyScheduleView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.5)
+                    .strokeBorder(Color.uiCardStroke, lineWidth: 0.5)
             )
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
@@ -625,7 +625,7 @@ private struct SubjectFilterSheet: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.5)
+                            .strokeBorder(Color.uiCardStroke, lineWidth: 0.5)
                     )
                     .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
                 }

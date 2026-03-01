@@ -35,7 +35,7 @@ struct ContentView: View {
             get: { showingProfile },
             set: { newValue in
                 if !newValue && showingProfile {
-                    showLoader(name: "Calendario", duration: 3)
+                    showLoader(name: "Calendario", duration: 2)
                 }
                 showingProfile = newValue
             }
@@ -48,7 +48,7 @@ struct ContentView: View {
             set: { newValue in
                 guard newValue != selectedTab else { return }
                 selectedTab = newValue
-                showLoader(name: newValue == 0 ? "Calendario" : "Aule", duration: 3)
+                showLoader(name: newValue == 0 ? "Calendario" : "Aule", duration: 2)
             }
         )
     }
@@ -89,7 +89,7 @@ struct ContentView: View {
             NavigationStack {
                 WeeklyScheduleView(
                     model: model,
-                    onEditProfile: { showLoader(name: "Profilo", duration: 3) { showingProfile = true } }
+                    onEditProfile: { showLoader(name: "Profilo", duration: 2) { showingProfile = true } }
                 )
             }
             .tabItem { Label("Calendario", systemImage: "calendar") }
@@ -104,7 +104,6 @@ struct ContentView: View {
         .tint(Color.uiAccent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .toolbarColorScheme(.light, for: .tabBar)
     }
 
     private var setupView: some View {
@@ -414,17 +413,22 @@ struct ContentView: View {
 }
 
 struct ProfileBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let isDark = colorScheme == .dark
         ZStack {
             LinearGradient(
-                colors: [Color(hex: "FDF8F2"), Color(hex: "EDCFB8")],
+                colors: isDark
+                    ? [Color(hex: "1C1610"), Color(hex: "1A1F1D")]
+                    : [Color(hex: "FDF8F2"), Color(hex: "EDCFB8")],
                 startPoint: .top,
                 endPoint: .bottom
             )
 
             Circle()
                 .fill(RadialGradient(
-                    colors: [Color.uiAccent.opacity(0.22), Color.uiAccent.opacity(0)],
+                    colors: [Color.uiAccent.opacity(isDark ? 0.14 : 0.22), Color.uiAccent.opacity(0)],
                     center: .center, startRadius: 0, endRadius: 330
                 ))
                 .frame(width: 520, height: 520)
@@ -432,7 +436,7 @@ struct ProfileBackground: View {
 
             Circle()
                 .fill(RadialGradient(
-                    colors: [Color(hex: "3F6D5D").opacity(0.18), Color(hex: "3F6D5D").opacity(0)],
+                    colors: [Color(hex: "3F6D5D").opacity(isDark ? 0.10 : 0.18), Color(hex: "3F6D5D").opacity(0)],
                     center: .center, startRadius: 0, endRadius: 280
                 ))
                 .frame(width: 450, height: 450)
@@ -445,7 +449,10 @@ struct ProfileBackground: View {
 }
 
 struct AppBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
+        let isDark = colorScheme == .dark
         ZStack {
             LinearGradient(
                 colors: [Color.uiBackgroundTop, Color.uiBackgroundBottom],
@@ -454,17 +461,17 @@ struct AppBackground: View {
             )
 
             Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobCyan, Color.uiBlobCyan.opacity(0)], center: .center, startRadius: 1, endRadius: 310))
+                .fill(RadialGradient(colors: [Color.uiBlobCyan.opacity(isDark ? 0.22 : 0.78), Color.uiBlobCyan.opacity(0)], center: .center, startRadius: 1, endRadius: 310))
                 .frame(width: 390, height: 390)
                 .offset(x: -100, y: -280)
 
             Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobBlue, Color.uiBlobBlue.opacity(0)], center: .center, startRadius: 1, endRadius: 350))
+                .fill(RadialGradient(colors: [Color.uiBlobBlue.opacity(isDark ? 0.18 : 0.55), Color.uiBlobBlue.opacity(0)], center: .center, startRadius: 1, endRadius: 350))
                 .frame(width: 430, height: 430)
                 .offset(x: 155, y: 240)
 
             Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobViolet, Color.uiBlobViolet.opacity(0)], center: .center, startRadius: 1, endRadius: 270))
+                .fill(RadialGradient(colors: [Color.uiBlobViolet.opacity(isDark ? 0.14 : 0.50), Color.uiBlobViolet.opacity(0)], center: .center, startRadius: 1, endRadius: 270))
                 .frame(width: 350, height: 350)
                 .offset(x: 175, y: -215)
         }
@@ -553,7 +560,7 @@ struct LiquidCardModifier: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.5)
+                    .strokeBorder(Color.uiCardStroke, lineWidth: 0.5)
             )
             .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
             .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
@@ -567,29 +574,30 @@ extension View {
 }
 
 extension Color {
-    static let uiBackgroundTop = Color(hex: "F5EFE4")
-    static let uiBackgroundBottom = Color(hex: "D0E9CB")
+    static let uiBackgroundTop    = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "1C1610") : UIColor(hex: "F5EFE4") })
+    static let uiBackgroundBottom = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "111A17") : UIColor(hex: "D0E9CB") })
 
-    static let uiAccent = Color(hex: "C65D3D")
+    static let uiAccent          = Color(hex: "C65D3D")
     static let uiAccentSecondary = Color(hex: "3F6D5D")
 
-    static let uiBlobCyan = Color(hex: "7ECFB5").opacity(0.78)
-    static let uiBlobBlue = Color(hex: "F0A650").opacity(0.55)
-    static let uiBlobViolet = Color(hex: "D48FB2").opacity(0.50)
+    static let uiBlobCyan   = Color(hex: "7ECFB5")
+    static let uiBlobBlue   = Color(hex: "F0A650")
+    static let uiBlobViolet = Color(hex: "D48FB2")
 
-    static let uiSurface = Color.white.opacity(0.76)
-    static let uiSurfaceStrong = Color.white.opacity(0.88)
-    static let uiSurfaceInput = Color.white.opacity(0.96)
-    static let uiTabBarBackground = Color.white.opacity(0.88)
+    static let uiSurface       = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "2B2419").withAlphaComponent(0.82) : .white.withAlphaComponent(0.76) })
+    static let uiSurfaceStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "332B1E").withAlphaComponent(0.94) : .white.withAlphaComponent(0.88) })
+    static let uiSurfaceInput  = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "3B3225").withAlphaComponent(0.98) : .white.withAlphaComponent(0.96) })
+    static let uiTabBarBackground = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "332B1E").withAlphaComponent(0.94) : .white.withAlphaComponent(0.88) })
 
-    static let uiStroke = Color.black.opacity(0.08)
-    static let uiStrokeStrong = Color.black.opacity(0.16)
+    static let uiStroke       = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.06) : .black.withAlphaComponent(0.08) })
+    static let uiStrokeStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.12) : .black.withAlphaComponent(0.16) })
+    static let uiCardStroke   = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.10) : .white.withAlphaComponent(0.55) })
 
-    static let uiTextPrimary = Color(hex: "222733")
-    static let uiTextSecondary = Color(hex: "394253")
-    static let uiTextMuted = Color(hex: "5A6578")
+    static let uiTextPrimary   = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "F0EBE3") : UIColor(hex: "222733") })
+    static let uiTextSecondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "C2B4A6") : UIColor(hex: "394253") })
+    static let uiTextMuted     = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "8C7E72") : UIColor(hex: "5A6578") })
 
-    static let uiButtonDisabled = Color(hex: "C8CCD5")
+    static let uiButtonDisabled = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "4A4538") : UIColor(hex: "C8CCD5") })
 }
 
 extension Color {
@@ -611,6 +619,18 @@ extension Color {
             blue: Double(b) / 255,
             opacity: 1
         )
+    }
+}
+
+extension UIColor {
+    convenience init(hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+        let r = Double((int >> 16) & 0xFF) / 255
+        let g = Double((int >> 8) & 0xFF) / 255
+        let b = Double(int & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: 1)
     }
 }
 

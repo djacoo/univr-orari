@@ -7,7 +7,6 @@ struct UniVROrariApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: model)
-                .preferredColorScheme(.light)
                 .task {
                     await model.bootstrap()
                 }
