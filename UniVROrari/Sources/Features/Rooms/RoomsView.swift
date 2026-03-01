@@ -27,10 +27,11 @@ struct RoomsView: View {
             ensureSelectedRoomIsValid()
         }
         .onChange(of: roomSearchText) { _, _ in
-            if let selectedRoomName,
-               !roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               !selectedRoomName.searchNormalized.contains(roomSearchText.searchNormalized) {
-                self.selectedRoomName = nil
+            let trimmed = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let selectedRoomName {
+                if trimmed.isEmpty || !selectedRoomName.searchNormalized.contains(trimmed.searchNormalized) {
+                    self.selectedRoomName = nil
+                }
             }
         }
     }

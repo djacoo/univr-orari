@@ -32,7 +32,7 @@ final class AppModel: ObservableObject {
 
     @Published var selectedCourseYear: Int = 1 {
         didSet {
-            let clamped = min(max(selectedCourseYear, 1), selectedCourse?.maxYear ?? 5)
+            let clamped = min(max(selectedCourseYear, 1), selectedCourse?.maxYear ?? 3)
             if clamped != selectedCourseYear {
                 selectedCourseYear = clamped
                 return
@@ -65,6 +65,8 @@ final class AppModel: ObservableObject {
             if let maxYear = selectedCourse?.maxYear, selectedCourseYear > maxYear {
                 selectedCourseYear = maxYear
             }
+            lessons = []
+            lessonsError = nil
             persistPreferences()
         }
     }

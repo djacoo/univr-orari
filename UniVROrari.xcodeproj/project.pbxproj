@@ -18,6 +18,7 @@
 		E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31FBCD971D8D0EC82AA9D94F /* RoomsView.swift */; };
 		EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23ECF010C340C71EEC76D0A8 /* Assets.xcassets */; };
 		EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01564628BE969E5B84632304 /* WeeklyScheduleView.swift */; };
+		AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11223344556677889900BB /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D0B9EC35BE5D78C9EF7E880F /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		DA2A10516A089484C67FE748 /* UniVROrari.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UniVROrari.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA11223344556677889900BB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F9473E341F1C5B24D1B974B6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -65,6 +67,7 @@
 				4354FAD8ABCD16996E014BF6 /* Assets.xcassets */,
 				F5E43CF80271E48677CE0DCF /* Preview Content */,
 				23ECF010C340C71EEC76D0A8 /* Assets.xcassets */,
+				AA11223344556677889900BB /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -262,6 +265,7 @@
 			files = (
 				EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */,
 				B8A04F6513073CB7B90032E6 /* Preview Assets.xcassets in Resources */,
+				AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

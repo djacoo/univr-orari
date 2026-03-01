@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
@@ -9,8 +8,49 @@ struct ContentView: View {
     @State private var isApplyingSetup = false
     @State private var showingProfile = false
     @State private var selectedTab = 0
-    @State private var tabLoaderVisible = false
-    @State private var tabLoaderTask: Task<Void, Never>?
+    @State private var loaderVisible = false
+    @State private var loaderName = "UniVR Orari"
+    @State private var loaderDuration = 5.0
+    @State private var loaderTask: Task<Void, Never>?
+
+    private func showLoader(name: String, duration: Double, then action: (() -> Void)? = nil) {
+        loaderTask?.cancel()
+        loaderName = name
+        loaderDuration = duration
+        loaderVisible = true
+        loaderTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(duration))
+                action?()
+                withAnimation(.easeOut(duration: 0.45)) {
+                    loaderVisible = false
+                }
+            } catch {}
+        }
+    }
+
+    private var profileSheetBinding: Binding<Bool> {
+        Binding(
+            get: { showingProfile },
+            set: { newValue in
+                if !newValue && showingProfile {
+                    showLoader(name: "Calendario", duration: 3)
+                }
+                showingProfile = newValue
+            }
+        )
+    }
+
+    private var tabSelectionBinding: Binding<Int> {
+        Binding(
+            get: { selectedTab },
+            set: { newValue in
+                guard newValue != selectedTab else { return }
+                selectedTab = newValue
+                showLoader(name: newValue == 0 ? "Calendario" : "Aule", duration: 3)
+            }
+        )
+    }
 
     var body: some View {
         Group {
@@ -26,20 +66,29 @@ struct ContentView: View {
         .animation(.spring(response: 0.48, dampingFraction: 0.86), value: model.requiresInitialSetup)
         .onAppear {
             syncSetupStateFromModel()
+            showLoader(name: "UniVR Orari", duration: 5)
         }
         .onChange(of: model.requiresInitialSetup) { _, requiresSetup in
             if requiresSetup {
                 syncSetupStateFromModel()
             }
         }
+        .sheet(isPresented: profileSheetBinding) {
+            ProfileView(model: model)
+        }
+        .overlay {
+            if loaderVisible {
+                LoaderView(name: loaderName, duration: loaderDuration)
+            }
+        }
     }
 
     private var mainTabs: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: tabSelectionBinding) {
             NavigationStack {
                 WeeklyScheduleView(
                     model: model,
-                    onEditProfile: { showingProfile = true }
+                    onEditProfile: { showLoader(name: "Profilo", duration: 3) { showingProfile = true } }
                 )
             }
             .tabItem { Label("Calendario", systemImage: "calendar") }
@@ -55,44 +104,6 @@ struct ContentView: View {
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.light, for: .tabBar)
-        .overlay {
-            VStack {
-                Spacer()
-                if tabLoaderVisible {
-                    HStack(spacing: 12) {
-                        ProgressView()
-                            .tint(Color.uiAccent)
-                            .scaleEffect(0.9)
-                        Text(selectedTab == 0 ? "Calendario" : "Aule")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.uiTextPrimary)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(
-                        Capsule()
-                            .fill(.regularMaterial)
-                            .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: 8)
-                    )
-                    .padding(.bottom, 88)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .animation(.spring(response: 0.34, dampingFraction: 0.82), value: tabLoaderVisible)
-        }
-        .onChange(of: selectedTab) { _, _ in
-            tabLoaderTask?.cancel()
-            tabLoaderVisible = true
-            tabLoaderTask = Task {
-                do {
-                    try await Task.sleep(for: .milliseconds(680))
-                    tabLoaderVisible = false
-                } catch {}
-            }
-        }
-        .sheet(isPresented: $showingProfile) {
-            ProfileView(model: model)
-        }
     }
 
     private var setupView: some View {
@@ -343,7 +354,7 @@ struct ContentView: View {
                 Spacer()
             }
             .padding(.vertical, 15)
-            .foregroundStyle(.white)
+            .foregroundStyle(selectedCourse == nil ? Color.uiTextMuted : .white)
             .background(
                 RoundedRectangle(cornerRadius: 17, style: .continuous)
                     .fill(
@@ -453,6 +464,73 @@ struct AppBackground: View {
         }
         .drawingGroup()
         .ignoresSafeArea()
+    }
+}
+
+struct LoaderView: View {
+    let name: String
+    let duration: Double
+
+    @State private var progress: Double = 0
+    @State private var step: Int = 0
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Loading")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                            .shadow(color: .white.opacity(0.5), radius: 8)
+                        Text(name + "...")
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .shadow(color: .white.opacity(0.6), radius: 14)
+                            .shadow(color: .white.opacity(0.25), radius: 28)
+                            .lineLimit(2)
+                    }
+
+                    VStack(alignment: .trailing, spacing: 10) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.12))
+                                    .frame(height: 5)
+                                Capsule()
+                                    .fill(Color.white)
+                                    .frame(width: max(5, geo.size.width * progress), height: 5)
+                                    .shadow(color: .white.opacity(0.9), radius: 6)
+                                    .shadow(color: .white.opacity(0.4), radius: 14)
+                            }
+                        }
+                        .frame(height: 5)
+
+                        Text("\(step)%")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.65))
+                            .monospacedDigit()
+                            .shadow(color: .white.opacity(0.4), radius: 6)
+                    }
+                }
+                .padding(.horizontal, 36)
+                .padding(.bottom, 100)
+            }
+        }
+        .task {
+            withAnimation(.easeInOut(duration: duration)) {
+                progress = 1.0
+            }
+            let stepDuration = duration / 100.0
+            for i in 1...100 {
+                try? await Task.sleep(for: .seconds(stepDuration))
+                step = i
+            }
+        }
     }
 }
 
