@@ -547,7 +547,11 @@ struct LoaderView: View {
             }
             let stepDuration = duration / 100.0
             for i in 1...100 {
-                try? await Task.sleep(for: .seconds(stepDuration))
+                do {
+                    try await Task.sleep(for: .seconds(stepDuration))
+                } catch {
+                    break
+                }
                 step = i
             }
         }

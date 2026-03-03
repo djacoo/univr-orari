@@ -336,7 +336,7 @@ struct RoomsView: View {
     }
 
     private func isCurrentlyFree(_ roomName: String) -> Bool {
-        guard Calendar.current.isDateInToday(model.selectedRoomsDate) else { return true }
+        guard Calendar.current.isDateInToday(model.selectedRoomsDate) else { return false }
         let now = Date()
         let calendar = Calendar.current
         let currentMins = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)

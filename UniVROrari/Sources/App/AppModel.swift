@@ -38,6 +38,7 @@ final class AppModel: ObservableObject {
                 selectedCourseYear = clamped
                 return
             }
+            guard !_isApplyingCourseChange else { return }
             persistPreferences()
             loadSubjectFilter()
         }
@@ -64,9 +65,11 @@ final class AppModel: ObservableObject {
     @Published var selectedCourse: StudyCourse? {
         didSet {
             preferredCourseID = selectedCourse?.id
+            _isApplyingCourseChange = true
             if let maxYear = selectedCourse?.maxYear, selectedCourseYear > maxYear {
                 selectedCourseYear = maxYear
             }
+            _isApplyingCourseChange = false
             lessons = []
             lessonsError = nil
             persistPreferences()
@@ -95,6 +98,7 @@ final class AppModel: ObservableObject {
         }
     }
     private var _isLoadingSubjectFilter = false
+    private var _isApplyingCourseChange = false
 
     @Published var buildings: [Building] = []
     @Published var selectedBuilding: Building? {
@@ -517,19 +521,28 @@ final class AppModel: ObservableObject {
     func scheduleNotifications(for lessons: [Lesson]) {
         guard notificationsEnabled else { return }
         let center = UNUserNotificationCenter.current()
-        let lead = TimeInterval(notificationLeadMinutes * 60)
+        center.removeAllPendingNotificationRequests()
+        var romeCal = Calendar(identifier: .gregorian)
+        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
         let now = Date()
         for lesson in lessons {
-            let fireDate = lesson.date
-                .addingTimeInterval(TimeInterval(lesson.startTime.minutesSinceMidnight * 60))
-                .addingTimeInterval(-lead)
-            guard fireDate > now else { continue }
+            let startMins = lesson.startTime.minutesSinceMidnight - notificationLeadMinutes
+            guard startMins >= 0 else { continue }
+            let dayComps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
+            var fireComps = DateComponents()
+            fireComps.timeZone = romeCal.timeZone
+            fireComps.year    = dayComps.year
+            fireComps.month   = dayComps.month
+            fireComps.day     = dayComps.day
+            fireComps.hour    = startMins / 60
+            fireComps.minute  = startMins % 60
+            guard let fireDate = romeCal.date(from: fireComps), fireDate > now else { continue }
             let content = UNMutableNotificationContent()
             content.title = lesson.title
-            content.body = "\(lesson.startTime) · \(lesson.room.isEmpty ? "" : "\(lesson.room) · ")\(lesson.professor)"
+            let bodyParts = [lesson.startTime, lesson.room, lesson.professor].filter { !$0.isEmpty }
+            content.body = bodyParts.joined(separator: " · ")
             content.sound = .default
-            let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: fireComps, repeats: false)
             let request = UNNotificationRequest(
                 identifier: "lesson:\(lesson.id):\(notificationLeadMinutes)",
                 content: content,
@@ -577,8 +590,9 @@ final class AppModel: ObservableObject {
 
     private func accumulateKnownSubjects(from lessons: [Lesson]) {
         guard !lessons.isEmpty else { return }
+        var known = Set(knownSubjects)
         var changed = false
-        for lesson in lessons where !knownSubjects.contains(lesson.title) {
+        for lesson in lessons where known.insert(lesson.title).inserted {
             knownSubjects.append(lesson.title)
             changed = true
         }
