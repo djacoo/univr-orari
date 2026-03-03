@@ -349,11 +349,7 @@ struct RoomsView: View {
     }
 
     private var displayedRoomSuggestions: [String] {
-        let query = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            return Array(roomSuggestions.prefix(20))
-        }
-        return Array(roomSuggestions.prefix(40))
+        Array(roomSuggestions.prefix(40))
     }
 
     private var activeRoomName: String? {

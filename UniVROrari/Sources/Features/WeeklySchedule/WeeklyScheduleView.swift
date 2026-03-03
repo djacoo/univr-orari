@@ -11,7 +11,7 @@ private let subjectColorPalette: [Color] = [
     Color(hex: "5A7A3A"),
 ]
 
-func subjectColor(for title: String) -> Color {
+private func subjectColor(for title: String) -> Color {
     let index = abs(title.hashValue) % subjectColorPalette.count
     return subjectColorPalette[index]
 }
@@ -35,8 +35,10 @@ struct WeeklyScheduleView: View {
                         .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.isLoadingLessons)
                         .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.lessonsError)
                     if viewMode == .list {
-                        lessonDayCards
-                            .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.weekStartDate)
+                        TimelineView(.everyMinute) { context in
+                            lessonDayCards(at: context.date)
+                        }
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.weekStartDate)
                     } else {
                         lessonGridCard
                             .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.weekStartDate)
@@ -426,14 +428,12 @@ struct WeeklyScheduleView: View {
     @ViewBuilder
     private var lessonGridCard: some View {
         if !model.lessonsGroupedByDay.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                WeeklyGridView(
-                    weekDays: allWeekDays,
-                    lessonsGroupedByDay: model.lessonsGroupedByDay,
-                    workShiftForDay: { model.workShift(for: $0) }
-                )
-                    .padding(.vertical, 14)
-            }
+            WeeklyGridView(
+                weekDays: allWeekDays,
+                lessonsGroupedByDay: model.lessonsGroupedByDay,
+                workShiftForDay: { model.workShift(for: $0) }
+            )
+            .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color.uiSurface)
@@ -449,7 +449,7 @@ struct WeeklyScheduleView: View {
     }
 
     @ViewBuilder
-    private var lessonDayCards: some View {
+    private func lessonDayCards(at now: Date) -> some View {
         if !calendarDayDates.isEmpty {
             LazyVStack(spacing: 12) {
                 ForEach(calendarDayDates, id: \.self) { date in
@@ -473,7 +473,7 @@ struct WeeklyScheduleView: View {
                         if !dayLessons.isEmpty {
                             VStack(spacing: 8) {
                                 ForEach(dayLessons) { lesson in
-                                    LessonCard(lesson: lesson)
+                                    LessonCard(lesson: lesson, isActive: isLessonActive(lesson, at: now))
                                 }
                             }
                         }
@@ -503,11 +503,22 @@ struct WeeklyScheduleView: View {
             DateHelpers.startOfDay(for: $0.date) == start
         })?.lessons ?? []
     }
+
+    private func isLessonActive(_ lesson: Lesson, at now: Date) -> Bool {
+        guard Calendar.current.isDateInToday(now),
+              Calendar.current.isDateInToday(lesson.date) else { return false }
+        let cal = Calendar.current
+        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        return lesson.startTime.minutesSinceMidnight <= currentMins
+            && currentMins < lesson.endTime.minutesSinceMidnight
+    }
 }
 
 private struct LessonCard: View {
     let lesson: Lesson
+    var isActive: Bool = false
 
+    @State private var glowing = false
     private var accentColor: Color { subjectColor(for: lesson.title) }
 
     var body: some View {
@@ -538,6 +549,21 @@ private struct LessonCard: View {
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.uiSurfaceInput))
                     }
+
+                    if isActive {
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 5, height: 5)
+                                .opacity(glowing ? 1.0 : 0.35)
+                            Text("Now")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(Color.red)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.red.opacity(0.10)))
+                    }
                 }
 
                 Text(lesson.title)
@@ -567,6 +593,29 @@ private struct LessonCard: View {
                 .fill(Color.uiSurfaceInput)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(
+                    isActive ? accentColor.opacity(glowing ? 0.9 : 0.25) : .clear,
+                    lineWidth: isActive ? 1.5 : 0
+                )
+        )
+        .onAppear {
+            if isActive {
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                    glowing = true
+                }
+            }
+        }
+        .onChange(of: isActive) { _, new in
+            if new {
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                    glowing = true
+                }
+            } else {
+                withAnimation(.default) { glowing = false }
+            }
+        }
     }
 
     private var durationLabel: String? {

@@ -75,6 +75,18 @@ struct ContentView: View {
                 syncSetupStateFromModel()
             }
         }
+        .onChange(of: model.pendingShortcutAction) { _, action in
+            guard let action else { return }
+            switch action {
+            case .openTimetable:
+                selectedTab = 0
+                showLoader(name: "Timetable", duration: 1)
+            case .findFreeRoom:
+                selectedTab = 1
+                showLoader(name: "Rooms", duration: 1)
+            }
+            model.pendingShortcutAction = nil
+        }
         .sheet(isPresented: profileSheetBinding) {
             ProfileView(model: model)
         }
@@ -599,7 +611,6 @@ extension Color {
     static let uiSurface       = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "2B2419").withAlphaComponent(0.82) : .white.withAlphaComponent(0.76) })
     static let uiSurfaceStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "332B1E").withAlphaComponent(0.94) : .white.withAlphaComponent(0.88) })
     static let uiSurfaceInput  = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "3B3225").withAlphaComponent(0.98) : .white.withAlphaComponent(0.96) })
-    static let uiTabBarBackground = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "332B1E").withAlphaComponent(0.94) : .white.withAlphaComponent(0.88) })
 
     static let uiStroke       = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.06) : .black.withAlphaComponent(0.08) })
     static let uiStrokeStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.12) : .black.withAlphaComponent(0.16) })
@@ -612,36 +623,28 @@ extension Color {
     static let uiButtonDisabled = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "4A4538") : UIColor(hex: "C8CCD5") })
 }
 
+private func _parseHexRGB(_ hex: String) -> (r: Double, g: Double, b: Double) {
+    let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    assert(cleaned.count == 6, "Invalid hex color: \(hex)")
+    var int: UInt64 = 0
+    Scanner(string: cleaned).scanHexInt64(&int)
+    return (
+        Double((int >> 16) & 0xFF) / 255,
+        Double((int >> 8)  & 0xFF) / 255,
+        Double(int & 0xFF) / 255
+    )
+}
+
 extension Color {
     init(hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-        let r, g, b: UInt64
-        switch cleaned.count {
-        case 6:
-            (r, g, b) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
-        default:
-            (r, g, b) = (255, 255, 255)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: 1
-        )
+        let (r, g, b) = _parseHexRGB(hex)
+        self.init(.sRGB, red: r, green: g, blue: b, opacity: 1)
     }
 }
 
 extension UIColor {
     convenience init(hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: cleaned).scanHexInt64(&int)
-        let r = Double((int >> 16) & 0xFF) / 255
-        let g = Double((int >> 8) & 0xFF) / 255
-        let b = Double(int & 0xFF) / 255
+        let (r, g, b) = _parseHexRGB(hex)
         self.init(red: r, green: g, blue: b, alpha: 1)
     }
 }
@@ -886,6 +889,22 @@ struct ProfileView: View {
 
     private var notificationsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $model.liveActivitiesEnabled) {
+                Label("Live Activity", systemImage: "circle.filled.pattern.diagonalline.rectangle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.uiTextPrimary)
+            }
+            .tint(Color.uiAccent)
+
+            Text("Shows the active lecture in Dynamic Island and Lock Screen.")
+                .font(.caption)
+                .foregroundStyle(Color.uiTextMuted)
+                .padding(.top, 4)
+                .padding(.leading, 28)
+
+            Divider()
+                .padding(.vertical, 14)
+
             Toggle(isOn: $model.notificationsEnabled) {
                 Label("Lecture reminders", systemImage: "bell.fill")
                     .font(.subheadline.weight(.semibold))
@@ -939,6 +958,7 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.notificationsEnabled)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.liveActivitiesEnabled)
     }
 
     private var returnButton: some View {

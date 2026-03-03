@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import ActivityKit
 
 private let appGroupSuite = "group.it.univr.orari"
 
@@ -26,6 +27,18 @@ fileprivate struct WidgetPreferences: Codable {
     var selectedCourseID: String?
     var selectedCourseYear: Int
     var selectedAcademicYear: Int?
+}
+
+// MARK: - Live Activity attributes (must stay in sync with LectureActivityAttributes in AppModel)
+
+struct LectureActivityAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        let lessonTitle: String
+        let room: String
+        let endTime: String
+        let endDate: Date
+    }
+    let courseName: String
 }
 
 // MARK: - Helpers
@@ -128,7 +141,7 @@ struct TimetableProvider: TimelineProvider {
     }
 }
 
-// MARK: - Views
+// MARK: - Timetable Widget Views
 
 struct TimetableWidgetEntryView: View {
     var entry: TimetableEntry
@@ -276,9 +289,51 @@ struct TimetableWidgetEntryView: View {
     }
 }
 
-// MARK: - Widget
+// MARK: - Live Activity Lock Screen View
 
-@main
+private struct LectureLockScreenView: View {
+    let context: ActivityViewContext<LectureActivityAttributes>
+    private var accentColor: Color { Color(red: 0.776, green: 0.365, blue: 0.239) }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "books.vertical.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(accentColor)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(context.state.lessonTitle)
+                    .font(.system(size: 15, weight: .bold))
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    if !context.state.room.isEmpty {
+                        Label(context.state.room, systemImage: "mappin")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Until \(context.state.endTime)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                .font(.system(size: 20, weight: .bold, design: .monospaced))
+                .foregroundStyle(accentColor)
+                .multilineTextAlignment(.trailing)
+                .frame(minWidth: 60, alignment: .trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .activityBackgroundTint(.black.opacity(0.55))
+        .activitySystemActionForegroundColor(.white)
+    }
+}
+
+// MARK: - Timetable Widget
+
 struct UniVROrariWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "UniVROrariWidget", provider: TimetableProvider()) { entry in
@@ -292,5 +347,66 @@ struct UniVROrariWidget: Widget {
             .accessoryCircular,
             .accessoryRectangular,
         ])
+    }
+}
+
+// MARK: - Live Activity Widget
+
+struct UniVROrariLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: LectureActivityAttributes.self) { context in
+            LectureLockScreenView(context: context)
+        } dynamicIsland: { context in
+            let accent = Color(red: 0.776, green: 0.365, blue: 0.239)
+            return DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Label(context.state.lessonTitle, systemImage: "books.vertical.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(accent)
+                        .lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(accent)
+                        .multilineTextAlignment(.trailing)
+                        .frame(minWidth: 54, alignment: .trailing)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    HStack {
+                        if !context.state.room.isEmpty {
+                            Label(context.state.room, systemImage: "mappin")
+                        }
+                        Spacer()
+                        Text("Until \(context.state.endTime)")
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                }
+            } compactLeading: {
+                Image(systemName: "books.vertical.fill")
+                    .foregroundStyle(accent)
+                    .font(.system(size: 12, weight: .semibold))
+            } compactTrailing: {
+                Text(timerInterval: Date()...context.state.endDate, countsDown: true)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(accent)
+                    .frame(maxWidth: 56)
+            } minimal: {
+                Image(systemName: "books.vertical.fill")
+                    .foregroundStyle(accent)
+            }
+            .widgetURL(URL(string: "univr://timetable"))
+        }
+    }
+}
+
+// MARK: - Widget Bundle
+
+@main
+struct UniVROrariWidgets: WidgetBundle {
+    var body: some Widget {
+        UniVROrariWidget()
+        UniVROrariLiveActivity()
     }
 }

@@ -2,6 +2,24 @@ import Foundation
 import Combine
 import UIKit
 import UserNotifications
+import ActivityKit
+import CoreSpotlight
+import UniformTypeIdentifiers
+
+enum ShortcutAction {
+    case openTimetable
+    case findFreeRoom
+}
+
+struct LectureActivityAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        let lessonTitle: String
+        let room: String
+        let endTime: String
+        let endDate: Date
+    }
+    let courseName: String
+}
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -142,9 +160,24 @@ final class AppModel: ObservableObject {
             if notificationsEnabled { scheduleNotifications(for: lessons) }
         }
     }
+
+    @Published var liveActivitiesEnabled: Bool = false {
+        didSet {
+            persistPreferences()
+            if liveActivitiesEnabled {
+                refreshLiveActivity()
+            } else {
+                endLectureActivity()
+            }
+        }
+    }
     @Published var workShifts: [WorkShift] = WorkShift.defaults {
         didSet { localStore.saveWorkShifts(workShifts) }
     }
+
+    @Published var pendingShortcutAction: ShortcutAction?
+
+    private var lectureActivity: Activity<LectureActivityAttributes>?
 
     private static let profileImageURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -192,6 +225,7 @@ final class AppModel: ObservableObject {
         workShifts = localStore.loadWorkShifts() ?? WorkShift.defaults
         notificationsEnabled = storedPreferences.notificationsEnabled ?? false
         notificationLeadMinutes = storedPreferences.notificationLeadMinutes ?? 15
+        liveActivitiesEnabled = storedPreferences.liveActivitiesEnabled ?? false
 
         let cachedCourses = localStore.loadCourses()
         if !cachedCourses.isEmpty {
@@ -398,6 +432,8 @@ final class AppModel: ObservableObject {
             lessons = fetchedLessons
             localStore.saveLessonsCache(forKey: key, lessons: fetchedLessons)
             scheduleNotifications(for: fetchedLessons)
+            indexLessonsForSpotlight(fetchedLessons)
+            refreshLiveActivity()
             isLoadingLessons = false
         } catch {
             if Self.isCancelledError(error) { return }
@@ -458,6 +494,68 @@ final class AppModel: ObservableObject {
     func jumpToToday() {
         let today = DateHelpers.monday(for: Date())
         weekStartDate = min(max(today, _weekBounds.start), _weekBounds.end)
+    }
+
+    func navigateToWeekContaining(_ date: Date) {
+        weekStartDate = DateHelpers.monday(for: date)
+    }
+
+    func refreshLiveActivity() {
+        guard liveActivitiesEnabled else { return }
+        if lectureActivity == nil {
+            lectureActivity = Activity<LectureActivityAttributes>.activities.first
+        }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let cal = Calendar.current
+        let now = Date()
+        guard cal.isDateInToday(now) else { endLectureActivity(); return }
+        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        let todayLessons = lessonsGroupedByDay.first(where: { cal.isDateInToday($0.date) })?.lessons ?? []
+        guard let lesson = todayLessons.first(where: {
+            $0.startTime.minutesSinceMidnight <= currentMins && currentMins < $0.endTime.minutesSinceMidnight
+        }) else { endLectureActivity(); return }
+        var romeCal = Calendar(identifier: .gregorian)
+        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+        let endMins = lesson.endTime.minutesSinceMidnight
+        var comps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
+        comps.hour = endMins / 60
+        comps.minute = endMins % 60
+        comps.timeZone = romeCal.timeZone
+        let endDate = romeCal.date(from: comps) ?? now.addingTimeInterval(3600)
+        let state = LectureActivityAttributes.ContentState(
+            lessonTitle: lesson.title, room: lesson.room, endTime: lesson.endTime, endDate: endDate
+        )
+        if let activity = lectureActivity {
+            Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
+        } else {
+            let attrs = LectureActivityAttributes(courseName: selectedCourse?.name ?? "")
+            lectureActivity = try? Activity<LectureActivityAttributes>.request(
+                attributes: attrs,
+                content: ActivityContent(state: state, staleDate: nil)
+            )
+        }
+    }
+
+    func endLectureActivity() {
+        guard let activity = lectureActivity else { return }
+        lectureActivity = nil
+        Task { await activity.end(ActivityContent(state: activity.content.state, staleDate: nil), dismissalPolicy: .immediate) }
+    }
+
+    private func indexLessonsForSpotlight(_ lessons: [Lesson]) {
+        let fmt = DateHelpers.apiDateFormatter
+        let items: [CSSearchableItem] = lessons.map { lesson in
+            let attrs = CSSearchableItemAttributeSet(contentType: UTType.plainText)
+            attrs.title = lesson.title
+            let parts = ["\(lesson.startTime)–\(lesson.endTime)", lesson.room, lesson.professor]
+                .filter { !$0.isEmpty }
+            attrs.contentDescription = parts.joined(separator: " · ")
+            attrs.keywords = [lesson.title, lesson.professor, lesson.room, lesson.building]
+                .filter { !$0.isEmpty }
+            let id = "univr.lesson:\(lesson.id):\(fmt.string(from: lesson.date))"
+            return CSSearchableItem(uniqueIdentifier: id, domainIdentifier: "it.univr.orari.lessons", attributeSet: attrs)
+        }
+        CSSearchableIndex.default().indexSearchableItems(items) { _ in }
     }
 
     func completeInitialSetup(course: StudyCourse, academicYear: Int) async {
@@ -563,7 +661,8 @@ final class AppModel: ObservableObject {
                 username: username.isEmpty ? nil : username,
                 isWorker: isWorker,
                 notificationsEnabled: notificationsEnabled,
-                notificationLeadMinutes: notificationLeadMinutes
+                notificationLeadMinutes: notificationLeadMinutes,
+                liveActivitiesEnabled: liveActivitiesEnabled
             )
         )
     }
@@ -700,6 +799,7 @@ struct StoredPreferences: Codable {
     var isWorker: Bool?
     var notificationsEnabled: Bool?
     var notificationLeadMinutes: Int?
+    var liveActivitiesEnabled: Bool?
 
     static let `default` = StoredPreferences(
         selectedCourseID: nil,
@@ -710,7 +810,8 @@ struct StoredPreferences: Codable {
         username: nil,
         isWorker: nil,
         notificationsEnabled: nil,
-        notificationLeadMinutes: nil
+        notificationLeadMinutes: nil,
+        liveActivitiesEnabled: nil
     )
 }
 

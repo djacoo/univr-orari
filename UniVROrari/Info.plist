@@ -49,5 +49,30 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+    <key>UIApplicationShortcutItems</key>
+    <array>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>it.univr.orari.timetable</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Timetable</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Open this week's schedule</string>
+            <key>UIApplicationShortcutItemIconSymbolName</key>
+            <string>calendar</string>
+        </dict>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>it.univr.orari.freeroom</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>Free Room Now</string>
+            <key>UIApplicationShortcutItemSubtitle</key>
+            <string>Find an available room</string>
+            <key>UIApplicationShortcutItemIconSymbolName</key>
+            <string>door.left.hand.open</string>
+        </dict>
+    </array>
 </dict>
 </plist>
