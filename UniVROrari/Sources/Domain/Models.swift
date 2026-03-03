@@ -87,7 +87,7 @@ struct WorkShift: Codable {
     var endTimeString: String { String(format: "%02d:%02d", endHour, endMinute) }
 
     private static let weekdayNames = [
-        "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
     ]
 
     static let defaults: [WorkShift] = (0..<7).map { day in

@@ -120,10 +120,13 @@ final class UniVRAPIClient {
             ) ?? "Edificio non specificato"
             let professor = nonEmpty(
                 joinedString(from: rawLesson["docenti"]),
+                joinedString(from: rawLesson["teachers"]),
                 stringValue(rawLesson["docente"]),
                 stringValue(rawLesson["prof"]),
-                stringValue(rawLesson["nome_docente"])
-            ) ?? "Docente non disponibile"
+                stringValue(rawLesson["nome_docente"]),
+                stringValue(rawLesson["titolare"]),
+                stringValue(rawLesson["nominativo"])
+            ) ?? "Professor unavailable"
 
             let rawID = nonEmpty(
                 stringValue(rawLesson["id"]),
@@ -177,12 +180,15 @@ final class UniVRAPIClient {
         let tableRows = extractTableRows(from: root["table"])
         let fasceLabels = parseFasceLabels(from: root["fasce"])
 
-        var rawLessons: [(roomCode: String?, payload: [String: Any])] = extractObjects(from: root["events"]).map {
-            (roomCode: nil, payload: $0)
-        }
-        if rawLessons.isEmpty {
-            rawLessons = extractEventsFromTable(tableRows: tableRows)
-        }
+        // Try all known EasyAcademy root keys that carry event detail (celle is the main one in grid_call,
+        // events is used in rooms_call; both may appear together or separately depending on the endpoint version).
+        var rawLessons: [(roomCode: String?, payload: [String: Any])] =
+            (extractObjects(from: root["celle"])
+            + extractObjects(from: root["events"])
+            + extractObjects(from: root["lessons"])).map {
+                (roomCode: nil, payload: $0)
+            }
+        rawLessons += extractEventsFromTable(tableRows: tableRows)
 
         var agendasByRoom: [String: [RoomLesson]] = [:]
         var seenRoomLessonIDs = Set<String>()
@@ -569,11 +575,16 @@ final class UniVRAPIClient {
         ) ?? "Lezione"
 
         let professor = nonEmpty(
+            joinedString(from: payload["utenti"]),
+            joinedString(from: payload["Utenti"]),
             joinedString(from: payload["docenti"]),
+            joinedString(from: payload["teachers"]),
             stringValue(payload["docente"]),
             stringValue(payload["prof"]),
-            stringValue(payload["nome_docente"])
-        ) ?? "Docente non disponibile"
+            stringValue(payload["nome_docente"]),
+            stringValue(payload["titolare"]),
+            stringValue(payload["nominativo"])
+        ) ?? "Professor unavailable"
 
         let courseName = nonEmpty(
             joinedString(from: payload["insegnamenti"]),
@@ -1068,14 +1079,22 @@ final class UniVRAPIClient {
             return string
         }
 
-        guard let array = rawValue as? [Any], !array.isEmpty else {
+        let items: [Any]
+        if let array = rawValue as? [Any] {
+            items = array
+        } else if let dict = rawValue as? [String: Any] {
+            // handle {"id": "Mario Rossi"} or {"id": {"nome":"Mario","cognome":"Rossi"}} formats
+            items = Array(dict.values)
+        } else {
             return nil
         }
+
+        guard !items.isEmpty else { return nil }
 
         var pieces: [String] = []
         var seen = Set<String>()
 
-        for item in array {
+        for item in items {
             if let string = nonEmpty(stringValue(item)) {
                 if seen.insert(string).inserted {
                     pieces.append(string)
@@ -1083,15 +1102,23 @@ final class UniVRAPIClient {
                 continue
             }
 
-            if let dictionary = item as? [String: Any],
-               let label = nonEmpty(
+            if let dictionary = item as? [String: Any] {
+                let label: String?
+                if let pre = nonEmpty(
                     stringValue(dictionary["label"]),
-                    stringValue(dictionary["nome"]),
-                    stringValue(dictionary["name"]),
-                    stringValue(dictionary["value"])
-               ),
-               seen.insert(label).inserted {
-                pieces.append(label)
+                    stringValue(dictionary["nominativo"]),
+                    stringValue(dictionary["nome_aff"])
+                ) {
+                    label = pre
+                } else {
+                    let nome = nonEmpty(stringValue(dictionary["Nome"]), stringValue(dictionary["nome"]), stringValue(dictionary["name"])) ?? ""
+                    let cognome = nonEmpty(stringValue(dictionary["Cognome"]), stringValue(dictionary["cognome"])) ?? ""
+                    let combined = [nome, cognome].filter { !$0.isEmpty }.joined(separator: " ")
+                    label = nonEmpty(combined, stringValue(dictionary["value"]))
+                }
+                if let label, seen.insert(label).inserted {
+                    pieces.append(label)
+                }
             }
         }
 

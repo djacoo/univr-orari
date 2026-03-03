@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'UniVROrari' in project 'UniVROrari'
+➜ Explicit dependency on target 'UniVROrariWidget' in project 'UniVROrari'
+Target 'UniVROrariWidget' in project 'UniVROrari' (no dependencies)

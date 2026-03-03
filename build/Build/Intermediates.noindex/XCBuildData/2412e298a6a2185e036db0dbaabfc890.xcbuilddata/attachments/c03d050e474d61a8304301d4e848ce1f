@@ -1,0 +1,16 @@
+{
+  "" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary.dia",
+    "emit-module-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary-emit-module.dia",
+    "pch" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget-primary.swiftdeps"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrariWidget/UniVROrariWidget.swift" : {
+    "index-unit-output-path" : "/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrariWidget.build/Objects-normal/arm64/UniVROrariWidget.o"
+  }
+}

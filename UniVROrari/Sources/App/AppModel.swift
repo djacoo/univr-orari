@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UIKit
+import UserNotifications
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -120,6 +121,23 @@ final class AppModel: ObservableObject {
     @Published var isWorker: Bool = false {
         didSet { persistPreferences() }
     }
+
+    @Published var notificationsEnabled: Bool = false {
+        didSet {
+            persistPreferences()
+            if notificationsEnabled {
+                Task { await requestNotificationPermission() }
+            } else {
+                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            }
+        }
+    }
+    @Published var notificationLeadMinutes: Int = 15 {
+        didSet {
+            persistPreferences()
+            if notificationsEnabled { scheduleNotifications(for: lessons) }
+        }
+    }
     @Published var workShifts: [WorkShift] = WorkShift.defaults {
         didSet { localStore.saveWorkShifts(workShifts) }
     }
@@ -168,6 +186,8 @@ final class AppModel: ObservableObject {
 
         isWorker = storedPreferences.isWorker ?? false
         workShifts = localStore.loadWorkShifts() ?? WorkShift.defaults
+        notificationsEnabled = storedPreferences.notificationsEnabled ?? false
+        notificationLeadMinutes = storedPreferences.notificationLeadMinutes ?? 15
 
         let cachedCourses = localStore.loadCourses()
         if !cachedCourses.isEmpty {
@@ -192,7 +212,7 @@ final class AppModel: ObservableObject {
 
     var availableAcademicYears: [Int] {
         let current = DateHelpers.currentAcademicYear()
-        return Array((current - 2)...(current + 1)).sorted(by: >)
+        return Array((current - 4)...(current + 1)).sorted(by: >)
     }
 
     var selectedAcademicYearLabel: String {
@@ -211,7 +231,14 @@ final class AppModel: ObservableObject {
 
     private static func computeWeekRangeTitle(from weekStart: Date) -> String {
         let weekEnd = DateHelpers.italianCalendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
-        return "\(DateHelpers.weekdayShortFormatter.string(from: weekStart)) - \(DateHelpers.weekdayShortFormatter.string(from: weekEnd))"
+        let startStr = DateHelpers.weekdayShortFormatter.string(from: weekStart)
+        let endStr   = DateHelpers.weekdayShortFormatter.string(from: weekEnd)
+        let startMonth = DateHelpers.monthAbbrevFormatter.string(from: weekStart)
+        let endMonth   = DateHelpers.monthAbbrevFormatter.string(from: weekEnd)
+        if startMonth == endMonth {
+            return "\(startStr) – \(endStr) \(endMonth)"
+        }
+        return "\(startStr) \(startMonth) – \(endStr) \(endMonth)"
     }
 
     private static func computeAllRoomNames(occupiedRooms: [RoomAgenda], freeRoomSlots: [FreeRoomSlot]) -> [String] {
@@ -231,8 +258,10 @@ final class AppModel: ObservableObject {
     }
 
     func bootstrap() async {
-        await loadCourses()
-        await loadBuildings()
+        async let courses: Void = loadCourses()
+        async let buildings: Void = loadBuildings()
+        await courses
+        await buildings
         clampWeekStartWithinAcademicYear()
     }
 
@@ -249,7 +278,7 @@ final class AppModel: ObservableObject {
                 if !cachedCourses.isEmpty {
                     allCourses = cachedCourses
                     applyPreferredCourseSelection()
-                    coursesError = "Il server UniVR non ha restituito corsi. Mostro elenco offline."
+                    coursesError = "UniVR server returned no results. Showing cached course list."
                     if hasCompletedInitialSetup {
                         await refreshLessons()
                     }
@@ -259,7 +288,7 @@ final class AppModel: ObservableObject {
                 allCourses = []
                 selectedCourse = nil
                 lessons = []
-                coursesError = "Nessun corso disponibile dal server UniVR."
+                coursesError = "No courses available from the UniVR server."
                 return
             }
 
@@ -275,7 +304,7 @@ final class AppModel: ObservableObject {
                 if !cachedCourses.isEmpty {
                     allCourses = cachedCourses
                     applyPreferredCourseSelection()
-                    coursesError = "Connessione non disponibile. Uso elenco corsi salvato offline."
+                    coursesError = "No connection — showing cached course list."
                     if hasCompletedInitialSetup {
                         await refreshLessons()
                     }
@@ -300,7 +329,7 @@ final class AppModel: ObservableObject {
                 if !cachedBuildings.isEmpty {
                     buildings = cachedBuildings
                     applyPreferredBuildingSelection()
-                    buildingsError = "Il server UniVR non ha restituito edifici. Uso elenco offline."
+                    buildingsError = "UniVR server returned no results. Showing cached building list."
                     if hasCompletedInitialSetup {
                         await refreshRooms()
                     }
@@ -311,7 +340,7 @@ final class AppModel: ObservableObject {
                 selectedBuilding = nil
                 occupiedRooms = []
                 freeRoomSlots = []
-                buildingsError = "Nessun edificio disponibile dal server UniVR."
+                buildingsError = "No buildings available from the UniVR server."
                 return
             }
 
@@ -327,7 +356,7 @@ final class AppModel: ObservableObject {
                 if !cachedBuildings.isEmpty {
                     buildings = cachedBuildings
                     applyPreferredBuildingSelection()
-                    buildingsError = "Connessione non disponibile. Uso elenco edifici salvato offline."
+                    buildingsError = "No connection — showing cached building list."
                     if hasCompletedInitialSetup {
                         await refreshRooms()
                     }
@@ -364,13 +393,14 @@ final class AppModel: ObservableObject {
             )
             lessons = fetchedLessons
             localStore.saveLessonsCache(forKey: key, lessons: fetchedLessons)
+            scheduleNotifications(for: fetchedLessons)
             isLoadingLessons = false
         } catch {
             if Self.isCancelledError(error) { return }
             isLoadingLessons = false
             if let cached = localStore.loadLessonsCache(forKey: key) {
                 lessons = cached.lessons
-                lessonsError = "Connessione non disponibile. Mostro orario offline aggiornato al \(Self.cacheDateFormatter.string(from: cached.savedAt))."
+                lessonsError = "No connection — showing offline schedule as of \(Self.cacheDateFormatter.string(from: cached.savedAt))."
             } else {
                 lessonsError = error.localizedDescription
             }
@@ -402,7 +432,7 @@ final class AppModel: ObservableObject {
             if let cached = localStore.loadRoomsCache(forKey: key) {
                 occupiedRooms = cached.occupiedRooms
                 freeRoomSlots = cached.freeRoomSlots
-                roomsError = "Connessione non disponibile. Mostro disponibilita aule offline aggiornata al \(Self.cacheDateFormatter.string(from: cached.savedAt))."
+                roomsError = "No connection — showing offline room availability as of \(Self.cacheDateFormatter.string(from: cached.savedAt))."
             } else {
                 roomsError = error.localizedDescription
             }
@@ -431,8 +461,10 @@ final class AppModel: ObservableObject {
         selectedAcademicYear = academicYear
         hasCompletedInitialSetup = true
         weekStartDate = defaultWeekStart(forAcademicYear: academicYear)
-        await refreshLessons()
-        await refreshRooms()
+        async let lessons: Void = refreshLessons()
+        async let rooms: Void = refreshRooms()
+        await lessons
+        await rooms
     }
 
     func reopenInitialSetup() {
@@ -473,6 +505,40 @@ final class AppModel: ObservableObject {
         selectedBuilding = buildings.first
     }
 
+    func requestNotificationPermission() async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+        }
+        if notificationsEnabled { scheduleNotifications(for: lessons) }
+    }
+
+    func scheduleNotifications(for lessons: [Lesson]) {
+        guard notificationsEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        let lead = TimeInterval(notificationLeadMinutes * 60)
+        let now = Date()
+        for lesson in lessons {
+            let fireDate = lesson.date
+                .addingTimeInterval(TimeInterval(lesson.startTime.minutesSinceMidnight * 60))
+                .addingTimeInterval(-lead)
+            guard fireDate > now else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = lesson.title
+            content.body = "\(lesson.startTime) · \(lesson.room.isEmpty ? "" : "\(lesson.room) · ")\(lesson.professor)"
+            content.sound = .default
+            let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            let request = UNNotificationRequest(
+                identifier: "lesson:\(lesson.id):\(notificationLeadMinutes)",
+                content: content,
+                trigger: trigger
+            )
+            center.add(request, withCompletionHandler: nil)
+        }
+    }
+
     private func persistPreferences() {
         localStore.savePreferences(
             StoredPreferences(
@@ -482,7 +548,9 @@ final class AppModel: ObservableObject {
                 selectedAcademicYear: selectedAcademicYear,
                 hasCompletedInitialSetup: hasCompletedInitialSetup,
                 username: username.isEmpty ? nil : username,
-                isWorker: isWorker
+                isWorker: isWorker,
+                notificationsEnabled: notificationsEnabled,
+                notificationLeadMinutes: notificationLeadMinutes
             )
         )
     }
@@ -527,7 +595,7 @@ final class AppModel: ObservableObject {
     private func saveSubjectFilter() {
         guard let key = subjectFilterKey() else { return }
         localStore.saveSubjectFilter(
-            SubjectFilterEntry(knownSubjects: knownSubjects, hiddenSubjects: Array(hiddenSubjects)),
+            SubjectFilterEntry(knownSubjects: knownSubjects, hiddenSubjects: Array(hiddenSubjects), savedAt: Date()),
             forKey: key
         )
     }
@@ -601,8 +669,8 @@ final class AppModel: ObservableObject {
 
     private static let cacheDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
-        formatter.dateStyle = .short
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter
     }()
@@ -616,6 +684,8 @@ struct StoredPreferences: Codable {
     var hasCompletedInitialSetup: Bool?
     var username: String?
     var isWorker: Bool?
+    var notificationsEnabled: Bool?
+    var notificationLeadMinutes: Int?
 
     static let `default` = StoredPreferences(
         selectedCourseID: nil,
@@ -624,7 +694,9 @@ struct StoredPreferences: Codable {
         selectedAcademicYear: nil,
         hasCompletedInitialSetup: nil,
         username: nil,
-        isWorker: nil
+        isWorker: nil,
+        notificationsEnabled: nil,
+        notificationLeadMinutes: nil
     )
 }
 
@@ -644,6 +716,7 @@ struct RoomsCacheEntry: Codable {
 struct SubjectFilterEntry: Codable {
     var knownSubjects: [String]
     var hiddenSubjects: [String]
+    var savedAt: Date = Date()
 }
 
 final class LocalDataStore {
@@ -661,7 +734,7 @@ final class LocalDataStore {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = UserDefaults(suiteName: "group.it.univr.orari") ?? .standard) {
         self.defaults = defaults
     }
 
@@ -725,6 +798,10 @@ final class LocalDataStore {
     func saveSubjectFilter(_ entry: SubjectFilterEntry, forKey key: String) {
         var all = loadValue([String: SubjectFilterEntry].self, forKey: Key.subjectFilter) ?? [:]
         all[key] = entry
+        if all.count > 20 {
+            let sorted = all.sorted { $0.value.savedAt > $1.value.savedAt }
+            all = Dictionary(uniqueKeysWithValues: sorted.prefix(20).map { ($0.key, $0.value) })
+        }
         saveValue(all, forKey: Key.subjectFilter)
     }
 

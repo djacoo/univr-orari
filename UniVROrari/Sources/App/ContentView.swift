@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UserNotifications
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
@@ -35,7 +36,7 @@ struct ContentView: View {
             get: { showingProfile },
             set: { newValue in
                 if !newValue && showingProfile {
-                    showLoader(name: "Calendario", duration: 2)
+                    showLoader(name: "Timetable", duration: 1)
                 }
                 showingProfile = newValue
             }
@@ -48,7 +49,7 @@ struct ContentView: View {
             set: { newValue in
                 guard newValue != selectedTab else { return }
                 selectedTab = newValue
-                showLoader(name: newValue == 0 ? "Calendario" : "Aule", duration: 2)
+                showLoader(name: newValue == 0 ? "Timetable" : "Rooms", duration: 1)
             }
         )
     }
@@ -67,7 +68,7 @@ struct ContentView: View {
         .animation(.spring(response: 0.48, dampingFraction: 0.86), value: model.requiresInitialSetup)
         .onAppear {
             syncSetupStateFromModel()
-            showLoader(name: "UniVR Orari", duration: 5)
+            showLoader(name: "UniVR Orari", duration: 1.5)
         }
         .onChange(of: model.requiresInitialSetup) { _, requiresSetup in
             if requiresSetup {
@@ -82,6 +83,9 @@ struct ContentView: View {
                 LoaderView(name: loaderName, duration: loaderDuration)
             }
         }
+        .sensoryFeedback(.impact(weight: .medium), trigger: showingProfile) { _, new in new }
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: loaderVisible) { _, new in !new }
+        .sensoryFeedback(.success, trigger: model.requiresInitialSetup) { old, new in old && !new }
     }
 
     private var mainTabs: some View {
@@ -89,21 +93,22 @@ struct ContentView: View {
             NavigationStack {
                 WeeklyScheduleView(
                     model: model,
-                    onEditProfile: { showLoader(name: "Profilo", duration: 2) { showingProfile = true } }
+                    onEditProfile: { showLoader(name: "Profile", duration: 1) { showingProfile = true } }
                 )
             }
-            .tabItem { Label("Calendario", systemImage: "calendar") }
+            .tabItem { Label("Timetable", systemImage: "calendar") }
             .tag(0)
 
             NavigationStack {
                 RoomsView(model: model)
             }
-            .tabItem { Label("Aule", systemImage: "door.left.hand.open") }
+            .tabItem { Label("Rooms", systemImage: "door.left.hand.open") }
             .tag(1)
         }
         .tint(Color.uiAccent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .sensoryFeedback(.impact(weight: .medium), trigger: selectedTab)
     }
 
     private var setupView: some View {
@@ -128,6 +133,7 @@ struct ContentView: View {
             .padding(.horizontal, 22)
             .padding(.vertical, 16)
         }
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private var setupHero: some View {
@@ -136,11 +142,11 @@ struct ContentView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.uiAccent)
 
-            Text("Il tuo orario.")
+            Text("Your timetable.")
                 .font(.system(size: 36, weight: .black, design: .rounded))
                 .foregroundStyle(Color.uiTextPrimary)
 
-            Text("Scegli il tuo corso per accedere al calendario lezioni.")
+            Text("Select your degree programme to access your lecture schedule.")
                 .font(.subheadline)
                 .foregroundStyle(Color.uiTextSecondary)
         }
@@ -150,11 +156,11 @@ struct ContentView: View {
 
     private var setupAcademicYearCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Anno accademico")
+            Text("Academic year")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.uiTextSecondary)
 
-            Picker("Anno accademico", selection: $setupSelectedAcademicYear) {
+            Picker("Academic year", selection: $setupSelectedAcademicYear) {
                 ForEach(model.availableAcademicYears, id: \.self) { academicYear in
                     Text(model.academicYearLabel(for: academicYear)).tag(academicYear)
                 }
@@ -165,12 +171,13 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: setupSelectedAcademicYear)
     }
 
     private var setupCourseYearCard: some View {
         let maxYear = max(1, setupSelectedCourse?.maxYear ?? 3)
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Anno di corso")
+            Text("Year of study")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.uiTextSecondary)
 
@@ -197,7 +204,7 @@ struct ContentView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Anno \(year)")
+                    .accessibilityLabel("Year \(year)")
                     .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                 }
             }
@@ -206,6 +213,7 @@ struct ContentView: View {
                     .fill(Color.uiSurfaceInput)
             )
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedCourseYear)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
@@ -219,7 +227,7 @@ struct ContentView: View {
 
     private var setupCourseSearchCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Corso di studi")
+            Text("Degree programme")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.uiTextSecondary)
 
@@ -227,7 +235,7 @@ struct ContentView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.uiAccent)
 
-                TextField("Cerca corso (es. Artificial Intelligence)", text: $setupCourseSearch)
+                TextField("Search (e.g. Artificial Intelligence)", text: $setupCourseSearch)
                     .foregroundStyle(Color.uiTextPrimary)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -244,7 +252,7 @@ struct ContentView: View {
 
     private var setupCourseSelectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Seleziona il tuo corso")
+            Text("Select your programme")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.uiTextSecondary)
 
@@ -288,13 +296,14 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: setupSelectedCourse?.id)
     }
 
     private var loadingSetupCard: some View {
         HStack(spacing: 12) {
             ProgressView()
                 .tint(Color.uiAccent)
-            Text("Carico elenco corsi UniVR...")
+            Text("Loading course catalogue…")
                 .font(.subheadline)
                 .foregroundStyle(Color.uiTextSecondary)
         }
@@ -304,7 +313,7 @@ struct ContentView: View {
 
     private var emptySetupCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Nessun corso trovato")
+            Text("No programmes found")
                 .font(.headline)
                 .foregroundStyle(Color.uiTextPrimary)
 
@@ -313,7 +322,7 @@ struct ContentView: View {
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             } else {
-                Text("Prova a cambiare testo di ricerca.")
+                Text("Try a different search query.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
@@ -323,7 +332,7 @@ struct ContentView: View {
                     await model.loadCourses()
                 }
             } label: {
-                Label("Ricarica corsi", systemImage: "arrow.clockwise")
+                Label("Reload", systemImage: "arrow.clockwise")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.uiAccent)
                     .padding(.top, 4)
@@ -353,7 +362,7 @@ struct ContentView: View {
                     ProgressView()
                         .tint(.white)
                 } else {
-                    Text("Apri calendario")
+                    Text("Open timetable")
                         .font(.headline.weight(.semibold))
                 }
                 Spacer()
@@ -443,7 +452,6 @@ struct ProfileBackground: View {
                 .offset(x: -110, y: 210)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .drawingGroup()
         .ignoresSafeArea()
     }
 }
@@ -475,7 +483,6 @@ struct AppBackground: View {
                 .frame(width: 350, height: 350)
                 .offset(x: 175, y: -215)
         }
-        .drawingGroup()
         .ignoresSafeArea()
     }
 }
@@ -562,6 +569,7 @@ struct LiquidCardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(Color.uiCardStroke, lineWidth: 0.5)
             )
+            .compositingGroup()
             .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
             .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
     }
@@ -667,17 +675,17 @@ struct ProfileView: View {
                     avatarCard
                     courseCard
                     workerCard
+                    notificationsCard
                     returnButton
                 }
                 .padding(.horizontal, 22)
                 .padding(.vertical, 16)
             }
-            .background { ProfileBackground() }
-            .navigationTitle("Profilo")
+            .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fatto") {
+                    Button("Done") {
                         saveAndDismiss()
                     }
                     .font(.subheadline.weight(.semibold))
@@ -688,6 +696,7 @@ struct ProfileView: View {
                 CoursePickerView(model: model)
             }
         }
+        .background { ProfileBackground() }
         .onAppear {
             editingUsername = model.username
         }
@@ -715,10 +724,10 @@ struct ProfileView: View {
                     }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Foto profilo")
-            .accessibilityHint("Tocca per cambiare la foto")
+            .accessibilityLabel("Profile photo")
+            .accessibilityHint("Tap to change photo")
 
-            TextField("Il tuo nome", text: $editingUsername)
+            TextField("Your name", text: $editingUsername)
                 .multilineTextAlignment(.center)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(Color.uiTextPrimary)
@@ -764,10 +773,10 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Corso")
+                    Text("Programme")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.uiTextSecondary)
-                    Text(model.selectedCourse?.name ?? "Nessun corso selezionato")
+                    Text(model.selectedCourse?.name ?? "No programme selected")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.uiTextPrimary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -778,7 +787,7 @@ struct ProfileView: View {
                 Button {
                     showingCoursePicker = true
                 } label: {
-                    Text("Cambia")
+                    Text("Change")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.uiAccent)
                         .padding(.horizontal, 10)
@@ -786,7 +795,7 @@ struct ProfileView: View {
                         .background(Capsule().fill(Color.uiAccent.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Cambia corso")
+                .accessibilityLabel("Change programme")
             }
 
             Divider()
@@ -822,7 +831,7 @@ struct ProfileView: View {
                                 )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Anno \(year)")
+                        .accessibilityLabel("Year \(year)")
                         .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                     }
                 }
@@ -840,7 +849,7 @@ struct ProfileView: View {
     private var workerCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Toggle(isOn: $model.isWorker) {
-                Label("Lavoro anche", systemImage: "briefcase.fill")
+                Label("Work shifts", systemImage: "briefcase.fill")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.uiTextPrimary)
             }
@@ -850,7 +859,7 @@ struct ProfileView: View {
                 Divider()
                     .padding(.top, 14)
 
-                Text("Turni settimanali")
+                Text("Weekly shifts")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.uiTextSecondary)
                     .padding(.top, 12)
@@ -871,13 +880,70 @@ struct ProfileView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.isWorker)
     }
 
+    private var notificationsCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle(isOn: $model.notificationsEnabled) {
+                Label("Lecture reminders", systemImage: "bell.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.uiTextPrimary)
+            }
+            .tint(Color.uiAccent)
+
+            if model.notificationsEnabled {
+                Divider()
+                    .padding(.top, 14)
+
+                Text("Notify me")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.uiTextSecondary)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+
+                HStack(spacing: 8) {
+                    ForEach([15, 30, 60], id: \.self) { minutes in
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                model.notificationLeadMinutes = minutes
+                            }
+                        } label: {
+                            Text(minutes == 60 ? "1h" : "\(minutes)m")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 9)
+                                .background(
+                                    model.notificationLeadMinutes == minutes
+                                        ? Color.uiAccent
+                                        : Color.uiSurfaceInput
+                                )
+                                .foregroundStyle(
+                                    model.notificationLeadMinutes == minutes ? Color.white : Color.uiTextSecondary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(minutes) minutes before")
+                        .accessibilityAddTraits(model.notificationLeadMinutes == minutes ? .isSelected : [])
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Text("before each lecture")
+                    .font(.caption)
+                    .foregroundStyle(Color.uiTextMuted)
+                    .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.notificationsEnabled)
+    }
+
     private var returnButton: some View {
         Button {
             saveAndDismiss()
         } label: {
             HStack {
                 Spacer()
-                Label("Torna al calendario", systemImage: "calendar")
+                Label("Back to timetable", systemImage: "calendar")
                     .font(.headline.weight(.semibold))
                 Spacer()
             }
@@ -916,7 +982,7 @@ private struct WorkShiftRow: View {
             if shift.isEnabled {
                 HStack(spacing: 24) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Inizio")
+                        Text("Start")
                             .font(.caption)
                             .foregroundStyle(Color.uiTextSecondary)
                         DatePicker("", selection: startTimeBinding, displayedComponents: .hourAndMinute)
@@ -924,7 +990,7 @@ private struct WorkShiftRow: View {
                             .tint(Color.uiAccent)
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Fine")
+                        Text("End")
                             .font(.caption)
                             .foregroundStyle(Color.uiTextSecondary)
                         DatePicker("", selection: endTimeBinding, displayedComponents: .hourAndMinute)
@@ -1036,10 +1102,10 @@ private struct CoursePickerView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                 }
-                .searchable(text: $searchText, prompt: "Cerca corso")
+                .searchable(text: $searchText, prompt: "Search programme")
             }
         }
-        .navigationTitle("Cambia corso")
+        .navigationTitle("Change programme")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if model.allCourses.isEmpty {

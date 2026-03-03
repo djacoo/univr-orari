@@ -1,5 +1,13 @@
 import Foundation
 
+extension String {
+    var minutesSinceMidnight: Int {
+        let parts = split(separator: ":").compactMap { Int($0) }
+        guard parts.count >= 2 else { return 0 }
+        return parts[0] * 60 + parts[1]
+    }
+}
+
 enum DateHelpers {
     static let italianCalendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -10,15 +18,22 @@ enum DateHelpers {
 
     static let dayMonthFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = Locale(identifier: "en_US")
         formatter.dateFormat = "EEEE d MMMM"
         return formatter
     }()
 
     static let weekdayShortFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "it_IT")
+        formatter.locale = Locale(identifier: "en_US")
         formatter.dateFormat = "EEE d"
+        return formatter
+    }()
+
+    static let monthAbbrevFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "MMM"
         return formatter
     }()
 

@@ -1,5 +1,21 @@
 import SwiftUI
 
+private let subjectColorPalette: [Color] = [
+    Color(hex: "C65D3D"),
+    Color(hex: "3F6D5D"),
+    Color(hex: "4A6FA5"),
+    Color(hex: "D4874E"),
+    Color(hex: "7D5BA6"),
+    Color(hex: "3D8B8B"),
+    Color(hex: "C05C7E"),
+    Color(hex: "5A7A3A"),
+]
+
+func subjectColor(for title: String) -> Color {
+    let index = abs(title.hashValue) % subjectColorPalette.count
+    return subjectColorPalette[index]
+}
+
 struct WeeklyScheduleView: View {
     @ObservedObject var model: AppModel
     let onEditProfile: () -> Void
@@ -9,21 +25,48 @@ struct WeeklyScheduleView: View {
     @State private var showingSubjectFilter = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                profileHeaderCard
-                weekNavigationCard
-                lessonStateSection
-                if viewMode == .list {
-                    lessonDayCards
-                } else {
-                    lessonGridCard
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    Color.clear.frame(height: 0).id("schedule-top")
+                    profileHeaderCard
+                    weekNavigationCard
+                    lessonStateSection
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.isLoadingLessons)
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.lessonsError)
+                    if viewMode == .list {
+                        lessonDayCards
+                            .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.weekStartDate)
+                    } else {
+                        lessonGridCard
+                            .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.weekStartDate)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+            }
+            .scrollDismissesKeyboard(.immediately)
+            .onChange(of: model.weekStartDate) { _, _ in
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                    proxy.scrollTo("schedule-top", anchor: .top)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
         }
-        .navigationTitle("Calendario")
+        .sensoryFeedback(.impact(weight: .heavy, intensity: 0.7), trigger: model.weekStartDate)
+        .sensoryFeedback(.impact(weight: .medium), trigger: viewMode)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: showingSubjectFilter) { _, new in new }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    let dx = value.translation.width
+                    let dy = value.translation.height
+                    guard abs(dx) > abs(dy) * 1.5, abs(dx) > 60 else { return }
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                        if dx < 0 { model.goToNextWeek() } else { model.goToPreviousWeek() }
+                    }
+                }
+        )
+        .navigationTitle("Timetable")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -42,7 +85,7 @@ struct WeeklyScheduleView: View {
                             .foregroundStyle(viewMode == .list ? .white : Color.uiTextSecondary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Vista lista")
+                    .accessibilityLabel("List view")
                     .accessibilityAddTraits(viewMode == .list ? .isSelected : [])
 
                     Button {
@@ -59,7 +102,7 @@ struct WeeklyScheduleView: View {
                             .foregroundStyle(viewMode == .grid ? .white : Color.uiTextSecondary)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Vista griglia")
+                    .accessibilityLabel("Grid view")
                     .accessibilityAddTraits(viewMode == .grid ? .isSelected : [])
                 }
                 .padding(3)
@@ -77,7 +120,7 @@ struct WeeklyScheduleView: View {
                         .font(.subheadline.weight(.semibold))
                 }
                 .tint(model.hiddenSubjects.isEmpty ? Color.uiTextSecondary : Color.uiAccent)
-                .accessibilityLabel("Filtra materie")
+                .accessibilityLabel("Filter subjects")
                 .disabled(model.knownSubjects.isEmpty)
             }
 
@@ -85,7 +128,7 @@ struct WeeklyScheduleView: View {
                 Button {
                     onEditProfile()
                 } label: {
-                    Label("Profilo", systemImage: "person.crop.circle.badge.gearshape")
+                    Label("Profile", systemImage: "person.crop.circle.badge.gearshape")
                         .font(.subheadline.weight(.semibold))
                 }
                 .tint(Color.uiAccent)
@@ -103,12 +146,104 @@ struct WeeklyScheduleView: View {
         }
     }
 
+    private func nextUpcomingLesson(at now: Date) -> (lesson: Lesson, isNow: Bool)? {
+        guard Calendar.current.isDateInToday(now) else { return nil }
+        let cal = Calendar.current
+        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        let todayLessons = model.lessonsGroupedByDay
+            .first(where: { Calendar.current.isDateInToday($0.date) })?
+            .lessons ?? []
+        for lesson in todayLessons {
+            let startParts = lesson.startTime.split(separator: ":").compactMap { Int($0) }
+            let endParts   = lesson.endTime.split(separator: ":").compactMap { Int($0) }
+            guard startParts.count == 2, endParts.count == 2 else { continue }
+            let startMins = startParts[0] * 60 + startParts[1]
+            let endMins   = endParts[0] * 60 + endParts[1]
+            if currentMins >= startMins && currentMins < endMins { return (lesson, true) }
+            if startMins > currentMins { return (lesson, false) }
+        }
+        return nil
+    }
+
+    private func countdownLabel(lesson: Lesson, isNow: Bool, at now: Date) -> String {
+        if isNow { return "Now: \(lesson.title) until \(lesson.endTime)" }
+        let cal = Calendar.current
+        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        let parts = lesson.startTime.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return "Next: \(lesson.title)" }
+        let diff = parts[0] * 60 + parts[1] - currentMins
+        if diff < 60 { return "Next: \(lesson.title) in \(diff)m" }
+        let h = diff / 60; let m = diff % 60
+        return m == 0 ? "Next: \(lesson.title) in \(h)h" : "Next: \(lesson.title) in \(h)h \(m)m"
+    }
+
     private var profileHeaderCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(model.selectedCourse?.name ?? "Corso non selezionato")
+            Button(action: onEditProfile) {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(uiAccentGradient)
+                            .frame(width: 34, height: 34)
+                        if let image = model.profileImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 34, height: 34)
+                                .clipShape(Circle())
+                        } else {
+                            let initial = model.username.trimmingCharacters(in: .whitespaces).prefix(1).uppercased()
+                            if initial.isEmpty {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.white)
+                            } else {
+                                Text(initial)
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(model.username.isEmpty ? "Profile" : model.username)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.uiTextSecondary)
+                        Text("Edit profile")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.uiTextMuted)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.uiTextMuted)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit profile")
+
+            Divider()
+
+            Text(model.selectedCourse?.name ?? "No programme selected")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.uiTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            TimelineView(.everyMinute) { context in
+                if let next = nextUpcomingLesson(at: context.date) {
+                    let color = next.isNow ? Color.uiAccent : Color.uiTextSecondary
+                    Label(countdownLabel(lesson: next.lesson, isNow: next.isNow, at: context.date),
+                          systemImage: next.isNow ? "dot.radiowaves.left.and.right" : "clock")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(color.opacity(0.10)))
+                }
+            }
 
             HStack(spacing: 8) {
                 Text(model.selectedAcademicYearLabel)
@@ -141,7 +276,7 @@ struct WeeklyScheduleView: View {
                                 )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Anno \(year)")
+                        .accessibilityLabel("Year \(year)")
                         .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                     }
                 }
@@ -150,6 +285,7 @@ struct WeeklyScheduleView: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.uiSurfaceInput)
                 )
+                .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedCourseYear)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -177,14 +313,14 @@ struct WeeklyScheduleView: View {
             .buttonStyle(.plain)
             .foregroundStyle(model.canGoPreviousWeek ? Color.uiTextPrimary : Color.uiTextMuted)
             .disabled(!model.canGoPreviousWeek)
-            .accessibilityLabel("Settimana precedente")
+            .accessibilityLabel("Previous week")
 
             Button {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
                     model.jumpToToday()
                 }
             } label: {
-                Text("Oggi")
+                Text("Today")
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -192,7 +328,7 @@ struct WeeklyScheduleView: View {
                     .foregroundStyle(Color.uiAccent)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Torna alla settimana corrente")
+            .accessibilityHint("Jump to current week")
 
             Button {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
@@ -207,7 +343,7 @@ struct WeeklyScheduleView: View {
             .buttonStyle(.plain)
             .foregroundStyle(model.canGoNextWeek ? Color.uiTextPrimary : Color.uiTextMuted)
             .disabled(!model.canGoNextWeek)
-            .accessibilityLabel("Settimana successiva")
+            .accessibilityLabel("Next week")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
@@ -221,18 +357,19 @@ struct WeeklyScheduleView: View {
                     .tint(Color.uiAccent)
                     .scaleEffect(1.5)
                     .frame(height: 28)
-                Text("Caricamento orario...")
+                Text("Loading schedule…")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
+            .transition(.opacity)
         } else if let lessonsError = model.lessonsError {
             let isOffline = lessonsError.localizedCaseInsensitiveContains("offline")
             VStack(alignment: .leading, spacing: 6) {
                 Label(
-                    isOffline ? "Dati offline" : "Errore caricamento",
+                    isOffline ? "Offline data" : "Load error",
                     systemImage: isOffline ? "wifi.slash" : "exclamationmark.triangle"
                 )
                 .font(.headline)
@@ -243,29 +380,31 @@ struct WeeklyScheduleView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 18, tint: isOffline ? Color.uiSurface : Color.red.opacity(0.16))
+            .transition(.opacity)
         } else if model.lessons.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Nessuna lezione in questa settimana")
+                Text("No lectures this week")
                     .font(.headline)
                     .foregroundStyle(Color.uiTextPrimary)
-                Text("Cambia settimana o aggiorna il profilo se necessario.")
+                Text("Try a different week or update your profile.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
+            .transition(.opacity)
         } else if model.lessonsGroupedByDay.isEmpty && !model.hiddenSubjects.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Nessuna materia visibile")
+                Text("No subjects visible")
                     .font(.headline)
                     .foregroundStyle(Color.uiTextPrimary)
-                Text("Hai nascosto tutte le materie di questa settimana.")
+                Text("All subjects for this week are hidden.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
                 Button {
                     model.hiddenSubjects = []
                 } label: {
-                    Label("Mostra tutte le materie", systemImage: "line.3.horizontal.decrease.circle")
+                    Label("Show all subjects", systemImage: "line.3.horizontal.decrease.circle")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.uiAccent)
                         .padding(.top, 4)
@@ -274,6 +413,7 @@ struct WeeklyScheduleView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
+            .transition(.opacity)
         }
     }
 
@@ -287,7 +427,11 @@ struct WeeklyScheduleView: View {
     private var lessonGridCard: some View {
         if !model.lessonsGroupedByDay.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                WeeklyGridView(weekDays: allWeekDays, lessonsGroupedByDay: model.lessonsGroupedByDay)
+                WeeklyGridView(
+                    weekDays: allWeekDays,
+                    lessonsGroupedByDay: model.lessonsGroupedByDay,
+                    workShiftForDay: { model.workShift(for: $0) }
+                )
                     .padding(.vertical, 14)
             }
             .background(
@@ -313,7 +457,7 @@ struct WeeklyScheduleView: View {
                     let dayLessons = lessonsForDay(date)
                     let dayShift = model.workShift(for: date)
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(isToday ? "Oggi" : DateHelpers.dayMonthFormatter.string(from: date).capitalized)
+                        Text(isToday ? "Today" : DateHelpers.dayMonthFormatter.string(from: date).capitalized)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(isToday ? .white : Color.uiAccent)
                             .padding(.horizontal, 10)
@@ -364,24 +508,37 @@ struct WeeklyScheduleView: View {
 private struct LessonCard: View {
     let lesson: Lesson
 
+    private var accentColor: Color { subjectColor(for: lesson.title) }
+
     var body: some View {
         HStack(spacing: 0) {
             LinearGradient(
-                colors: [Color.uiAccent, Color.uiAccent.opacity(0.3)],
+                colors: [accentColor, accentColor.opacity(0.3)],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .frame(width: 4)
 
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("\(lesson.startTime) – \(lesson.endTime)")
-                        .font(.caption.weight(.bold))
-                        .kerning(0.2)
+                HStack(spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("\(lesson.startTime) – \(lesson.endTime)")
+                            .font(.caption.weight(.bold))
+                            .kerning(0.2)
+                    }
+                    .foregroundStyle(accentColor)
+
+                    if let dur = durationLabel {
+                        Text(dur)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Color.uiTextMuted)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.uiSurfaceInput))
+                    }
                 }
-                .foregroundStyle(Color.uiAccent)
 
                 Text(lesson.title)
                     .font(.subheadline.weight(.semibold))
@@ -412,6 +569,16 @@ private struct LessonCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
+    private var durationLabel: String? {
+        let start = lesson.startTime.minutesSinceMidnight
+        let end   = lesson.endTime.minutesSinceMidnight
+        let diff  = end - start
+        guard diff > 0 else { return nil }
+        if diff < 60 { return "\(diff)m" }
+        let h = diff / 60; let m = diff % 60
+        return m == 0 ? "\(h)h" : "\(h)h\(m)m"
+    }
+
     private var locationLabel: String {
         let building = lesson.building
         if building.isEmpty || building == lesson.room || building == "Edificio non specificato" {
@@ -439,7 +606,7 @@ private struct WorkShiftCard: View {
                     .foregroundStyle(Color.uiAccentSecondary)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Turno lavorativo")
+                    Text("Work shift")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.uiAccentSecondary)
                     Text("\(shift.startTimeString) – \(shift.endTimeString)")
@@ -464,20 +631,19 @@ private struct WorkShiftCard: View {
 private struct WeeklyGridView: View {
     let weekDays: [Date]
     let lessonsGroupedByDay: [(date: Date, lessons: [Lesson])]
+    var workShiftForDay: (Date) -> WorkShift?
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(Array(weekDays.enumerated()), id: \.offset) { index, day in
-                    DayGridColumn(date: day, lessons: lessonsForDay(day))
-                    if index < weekDays.count - 1 {
-                        Divider()
-                            .padding(.vertical, 8)
-                    }
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Array(weekDays.enumerated()), id: \.offset) { index, day in
+                DayGridColumn(date: day, lessons: lessonsForDay(day), shift: workShiftForDay(day))
+                if index < weekDays.count - 1 {
+                    Divider()
+                        .padding(.vertical, 8)
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, 16)
     }
 
     private func lessonsForDay(_ date: Date) -> [Lesson] {
@@ -491,12 +657,13 @@ private struct WeeklyGridView: View {
 private struct DayGridColumn: View {
     let date: Date
     let lessons: [Lesson]
+    var shift: WorkShift? = nil
 
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
 
     private static let weekdayFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
+        f.locale = Locale(identifier: "en_US")
         f.setLocalizedDateFormatFromTemplate("EEE")
         return f
     }()
@@ -514,13 +681,30 @@ private struct DayGridColumn: View {
                     .background(Circle().fill(isToday ? Color.uiAccent : Color.clear))
             }
 
-            if lessons.isEmpty {
+            if let shift {
+                HStack(spacing: 4) {
+                    Image(systemName: "briefcase.fill")
+                        .font(.system(size: 7, weight: .semibold))
+                    Text("\(shift.startTimeString)–\(shift.endTimeString)")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+                .foregroundStyle(Color.uiAccentSecondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.uiAccentSecondary.opacity(0.12))
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if lessons.isEmpty && shift == nil {
                 Text("–")
                     .font(.caption)
                     .foregroundStyle(Color.uiTextMuted)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 4)
-            } else {
+            } else if !lessons.isEmpty {
                 VStack(spacing: 6) {
                     ForEach(lessons) { lesson in
                         GridLessonPill(lesson: lesson)
@@ -528,8 +712,8 @@ private struct DayGridColumn: View {
                 }
             }
         }
-        .frame(width: 128)
-        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4)
         .padding(.bottom, 4)
     }
 }
@@ -537,16 +721,18 @@ private struct DayGridColumn: View {
 private struct GridLessonPill: View {
     let lesson: Lesson
 
+    private var accentColor: Color { subjectColor(for: lesson.title) }
+
     var body: some View {
         HStack(spacing: 0) {
             Rectangle()
-                .fill(Color.uiAccent.opacity(0.75))
+                .fill(accentColor.opacity(0.75))
                 .frame(width: 3)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(lesson.startTime)–\(lesson.endTime)")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.uiAccent)
+                    .foregroundStyle(accentColor)
 
                 Text(lesson.title)
                     .font(.system(size: 11, weight: .semibold))
@@ -583,7 +769,7 @@ private struct SubjectFilterSheet: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Seleziona le materie da visualizzare nel calendario")
+                    Text("Select subjects to show in the timetable")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Color.uiTextSecondary)
                         .padding(.horizontal, 4)
@@ -610,6 +796,7 @@ private struct SubjectFilterSheet: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: visible)
                             .accessibilityLabel(title)
                             .accessibilityAddTraits(visible ? .isSelected : [])
 
@@ -633,11 +820,11 @@ private struct SubjectFilterSheet: View {
                 .padding(.vertical, 16)
             }
             .background { AppBackground() }
-            .navigationTitle("Materie")
+            .navigationTitle("Subjects")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Mostra tutto") {
+                    Button("Show all") {
                         model.hiddenSubjects = []
                     }
                     .font(.subheadline.weight(.semibold))
@@ -645,7 +832,7 @@ private struct SubjectFilterSheet: View {
                     .disabled(model.hiddenSubjects.isEmpty)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fatto") { dismiss() }
+                    Button("Done") { dismiss() }
                         .font(.subheadline.weight(.semibold))
                         .tint(Color.uiAccent)
                 }

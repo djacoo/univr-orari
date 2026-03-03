@@ -4,19 +4,40 @@ struct RoomsView: View {
     @ObservedObject var model: AppModel
     @State private var roomSearchText = ""
     @State private var selectedRoomName: String?
+    @State private var freeNowOnly = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                filterCard
-                roomSearchCard
-                roomsStateSection
-                roomScheduleSection
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    Color.clear.frame(height: 0).id("rooms-top")
+                    filterCard
+                    roomSearchCard
+                    roomsStateSection
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.isLoadingRooms)
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.roomsError)
+                    roomScheduleSection
+                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: activeRoomName)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
+            .scrollDismissesKeyboard(.immediately)
+            .onChange(of: model.selectedRoomsDate) { _, _ in
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                    proxy.scrollTo("rooms-top", anchor: .top)
+                }
+            }
+            .onChange(of: model.selectedBuilding?.id) { _, _ in
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                    proxy.scrollTo("rooms-top", anchor: .top)
+                }
+            }
         }
-        .navigationTitle("Aule")
+        .sensoryFeedback(.impact(weight: .medium), trigger: activeRoomName)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedBuilding?.id)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedRoomsDate)
+        .navigationTitle("Rooms")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await model.refreshRooms()
@@ -34,6 +55,11 @@ struct RoomsView: View {
                 }
             }
         }
+        .onChange(of: model.selectedRoomsDate) { _, newDate in
+            if !Calendar.current.isDateInToday(newDate) {
+                freeNowOnly = false
+            }
+        }
     }
 
     private var filterCard: some View {
@@ -43,7 +69,7 @@ struct RoomsView: View {
                     ProgressView()
                         .tint(Color.uiAccent)
                         .scaleEffect(1.1)
-                    Text("Caricamento edifici...")
+                    Text("Loading buildings…")
                         .font(.subheadline)
                         .foregroundStyle(Color.uiTextSecondary)
                 }
@@ -53,7 +79,7 @@ struct RoomsView: View {
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             } else {
-                Picker("Edificio", selection: selectedBuildingBinding) {
+                Picker("Building", selection: selectedBuildingBinding) {
                     ForEach(model.buildings) { building in
                         Text(building.name).tag(Optional(building))
                     }
@@ -61,13 +87,34 @@ struct RoomsView: View {
                 .pickerStyle(.menu)
                 .tint(Color.uiAccent)
 
-                DatePicker(
-                    "Data",
-                    selection: $model.selectedRoomsDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.compact)
-                .tint(Color.uiAccent)
+                HStack(spacing: 10) {
+                    DatePicker(
+                        "Date",
+                        selection: $model.selectedRoomsDate,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.compact)
+                    .tint(Color.uiAccent)
+
+                    if !Calendar.current.isDateInToday(model.selectedRoomsDate) {
+                        Button {
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                                model.selectedRoomsDate = DateHelpers.startOfDay(for: Date())
+                            }
+                        } label: {
+                            Text("Today")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Capsule().fill(Color.uiSurfaceStrong))
+                                .foregroundStyle(Color.uiAccent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Jump to today")
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    }
+                }
+                .animation(.spring(response: 0.3, dampingFraction: 0.82), value: Calendar.current.isDateInToday(model.selectedRoomsDate))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,14 +123,39 @@ struct RoomsView: View {
 
     private var roomSearchCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Cerca aula")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.uiTextSecondary)
+            HStack {
+                Text("Search room")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.uiTextSecondary)
+
+                Spacer()
+
+                if Calendar.current.isDateInToday(model.selectedRoomsDate) {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                            freeNowOnly.toggle()
+                            selectedRoomName = nil
+                            roomSearchText = ""
+                        }
+                    } label: {
+                        Label("Free now", systemImage: "door.left.hand.open")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(freeNowOnly ? Color.uiAccentSecondary : Color.uiSurfaceInput))
+                            .foregroundStyle(freeNowOnly ? .white : Color.uiTextSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: freeNowOnly)
+                    .accessibilityLabel("Show rooms free right now")
+                    .accessibilityAddTraits(freeNowOnly ? .isSelected : [])
+                }
+            }
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.uiAccent)
-                TextField("Es. T.03", text: $roomSearchText)
+                TextField("e.g. T.03", text: $roomSearchText)
                     .foregroundStyle(Color.uiTextPrimary)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -93,6 +165,8 @@ struct RoomsView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.uiSurfaceInput)
             )
+            .opacity(freeNowOnly ? 0.4 : 1)
+            .disabled(freeNowOnly)
 
             if !roomSuggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -134,18 +208,19 @@ struct RoomsView: View {
                     .tint(Color.uiAccent)
                     .scaleEffect(1.5)
                     .frame(height: 28)
-                Text("Caricamento disponibilità aule...")
+                Text("Loading room availability…")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
+            .transition(.opacity)
         } else if let roomsError = model.roomsError {
             let isOffline = roomsError.localizedCaseInsensitiveContains("offline")
             VStack(alignment: .leading, spacing: 6) {
                 Label(
-                    isOffline ? "Dati offline" : "Errore caricamento aule",
+                    isOffline ? "Offline data" : "Load error",
                     systemImage: isOffline ? "wifi.slash" : "exclamationmark.triangle"
                 )
                 .font(.headline)
@@ -156,6 +231,7 @@ struct RoomsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 18, tint: isOffline ? Color.uiSurface : Color.red.opacity(0.16))
+            .transition(.opacity)
         }
     }
 
@@ -177,7 +253,7 @@ struct RoomsView: View {
                 }
 
                 if selectedRoomLessons.isEmpty {
-                    Text("Nessuna prenotazione per questa giornata.")
+                    Text("No bookings today.")
                         .font(.subheadline)
                         .foregroundStyle(Color.uiTextSecondary)
                         .padding(.vertical, 4)
@@ -193,12 +269,12 @@ struct RoomsView: View {
                 Divider()
                     .overlay(Color.uiStrokeStrong)
 
-                Text("Intervalli liberi")
+                Text("Free slots")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.uiTextSecondary)
 
                 if selectedRoomFreeSlots.isEmpty {
-                    Text("Nessun intervallo libero rilevato.")
+                    Text("No free slots detected.")
                         .font(.subheadline)
                         .foregroundStyle(Color.uiTextSecondary)
                 } else {
@@ -223,17 +299,19 @@ struct RoomsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
+            .transition(.opacity)
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Seleziona un’aula")
+                Text("Select a room")
                     .font(.headline)
                     .foregroundStyle(Color.uiTextPrimary)
-                Text("Cerca un nome aula per vedere programma giornaliero e periodi liberi.")
+                Text("Search for a room to view its daily schedule and free periods.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
+            .transition(.opacity)
         }
     }
 
@@ -245,14 +323,28 @@ struct RoomsView: View {
     }
 
     private var roomSuggestions: [String] {
+        let base: [String]
+        if freeNowOnly {
+            base = model.allRoomNames.filter { isCurrentlyFree($0) }
+        } else {
+            base = model.allRoomNames
+        }
         let query = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedQuery = query.searchNormalized
-        guard !normalizedQuery.isEmpty else {
-            return model.allRoomNames
-        }
+        guard !normalizedQuery.isEmpty else { return base }
+        return base.filter { $0.searchNormalized.contains(normalizedQuery) }
+    }
 
-        return model.allRoomNames.filter { roomName in
-            roomName.searchNormalized.contains(normalizedQuery)
+    private func isCurrentlyFree(_ roomName: String) -> Bool {
+        guard Calendar.current.isDateInToday(model.selectedRoomsDate) else { return true }
+        let now = Date()
+        let calendar = Calendar.current
+        let currentMins = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        return model.freeRoomSlots.filter { $0.roomName == roomName }.contains { slot in
+            let from = slot.fromTime.split(separator: ":").compactMap { Int($0) }
+            let to   = slot.toTime.split(separator: ":").compactMap { Int($0) }
+            guard from.count == 2, to.count == 2 else { return false }
+            return currentMins >= from[0] * 60 + from[1] && currentMins < to[0] * 60 + to[1]
         }
     }
 

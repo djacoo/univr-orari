@@ -19,6 +19,8 @@
 		EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23ECF010C340C71EEC76D0A8 /* Assets.xcassets */; };
 		EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01564628BE969E5B84632304 /* WeeklyScheduleView.swift */; };
 		AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11223344556677889900BB /* PrivacyInfo.xcprivacy */; };
+		AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F1 /* UniVROrariWidget.swift */; };
+		AB0000000000000000000012 /* UniVROrariWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F2 /* UniVROrariWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,9 @@
 		DA2A10516A089484C67FE748 /* UniVROrari.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UniVROrari.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA11223344556677889900BB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F9473E341F1C5B24D1B974B6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AB00000000000000000000F1 /* UniVROrariWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVROrariWidget.swift; sourceTree = "<group>"; };
+		AB00000000000000000000F2 /* UniVROrariWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UniVROrariWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB00000000000000000000F3 /* Info.plist (Widget) */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,7 +55,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB0000000000000000000033 /* Frameworks (Widget) */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AB0000000000000000000034 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AB0000000000000000000012 /* UniVROrariWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXGroup section */
 		182362D045D044689D9A6A5B /* AppIcon.appiconset */ = {
@@ -174,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				DA2A10516A089484C67FE748 /* UniVROrari.app */,
+				AB00000000000000000000F2 /* UniVROrariWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -195,12 +222,22 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		AB0000000000000000000021 /* UniVROrariWidget */ = {
+			isa = PBXGroup;
+			children = (
+				AB00000000000000000000F1 /* UniVROrariWidget.swift */,
+				AB00000000000000000000F3 /* Info.plist (Widget) */,
+			);
+			path = UniVROrariWidget;
+			sourceTree = "<group>";
+		};
 		F6143734BC6A5A25A67E852C = {
 			isa = PBXGroup;
 			children = (
 				E310C2059155B4AB557D9F3F /* Products */,
 				6FF6F1F830DA739041AEF288 /* Frameworks */,
 				C0CEC788FF4EE82F631588D9 /* UniVROrari */,
+				AB0000000000000000000021 /* UniVROrariWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -214,15 +251,34 @@
 				7FE5A823320EC3A63514DE57 /* Sources */,
 				90FA08E37B7F594B576D8B9A /* Frameworks */,
 				0214B36EAC7C192236A10416 /* Resources */,
+				AB0000000000000000000034 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AB0000000000000000000051 /* PBXTargetDependency */,
 			);
 			name = UniVROrari;
 			productName = UniVROrari;
 			productReference = DA2A10516A089484C67FE748 /* UniVROrari.app */;
 			productType = "com.apple.product-type.application";
+		};
+		AB0000000000000000000041 /* UniVROrariWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB0000000000000000000042 /* Build configuration list for PBXNativeTarget "UniVROrariWidget" */;
+			buildPhases = (
+				AB0000000000000000000033 /* Frameworks (Widget) */,
+				AB0000000000000000000031 /* Sources (Widget) */,
+				AB0000000000000000000032 /* Resources (Widget) */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UniVROrariWidget;
+			productName = UniVROrariWidget;
+			productReference = AB00000000000000000000F2 /* UniVROrariWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -234,6 +290,11 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					7AFB8DAF3653815B1358C205 = {
+						CreatedOnToolsVersion = 26.2;
+						DevelopmentTeam = D3U3S86Y66;
+						ProvisioningStyle = Automatic;
+					};
+					AB0000000000000000000041 = {
 						CreatedOnToolsVersion = 26.2;
 						DevelopmentTeam = D3U3S86Y66;
 						ProvisioningStyle = Automatic;
@@ -254,6 +315,7 @@
 			projectRoot = "";
 			targets = (
 				7AFB8DAF3653815B1358C205 /* UniVROrari */,
+				AB0000000000000000000041 /* UniVROrariWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -266,6 +328,13 @@
 				EC35F6A0274752826F381F4C /* Assets.xcassets in Resources */,
 				B8A04F6513073CB7B90032E6 /* Preview Assets.xcassets in Resources */,
 				AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB0000000000000000000032 /* Resources (Widget) */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -287,7 +356,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB0000000000000000000031 /* Sources (Widget) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AB0000000000000000000051 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AB0000000000000000000041 /* UniVROrariWidget */;
+			targetProxy = AB0000000000000000000052 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		AB0000000000000000000052 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA3D39BB1A668F397EF0D717 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB0000000000000000000041;
+			remoteInfo = UniVROrariWidget;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		75FE26C54E07FDCAA448AC7C /* Debug */ = {
@@ -296,6 +391,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = UniVROrari/UniVROrari.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D3U3S86Y66;
@@ -436,6 +532,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = UniVROrari/UniVROrari.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = D3U3S86Y66;
@@ -447,6 +544,49 @@
 				PRODUCT_BUNDLE_IDENTIFIER = it.univr.orari;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AB0000000000000000000043 /* Debug (Widget) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = UniVROrariWidget/UniVROrariWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3U3S86Y66;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = UniVROrariWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.univr.orari.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AB0000000000000000000044 /* Release (Widget) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = UniVROrariWidget/UniVROrariWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D3U3S86Y66;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = UniVROrariWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.univr.orari.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -470,6 +610,15 @@
 			buildConfigurations = (
 				A946BCB731826B3372509F7C /* Debug */,
 				9DE6D30683A9C05682E7ACC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000042 /* Build configuration list for PBXNativeTarget "UniVROrariWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000000000000000000044 /* Release (Widget) */,
+				AB0000000000000000000043 /* Debug (Widget) */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

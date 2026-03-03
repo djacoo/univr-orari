@@ -1,0 +1,12 @@
+{
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/App/UniVROrariApp.swift" : {
+    "abi-baseline-json" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari.abi.json",
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary.dia",
+    "objc-header" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-Swift.h",
+    "swiftdoc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari.swiftdoc",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari.swiftmodule",
+    "swiftsourceinfo" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Release-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari.swiftsourceinfo"
+  }
+}
