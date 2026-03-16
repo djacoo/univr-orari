@@ -391,23 +391,58 @@ enum WeeklySummaryService {
     }
 
     private static func prompt(for week: [(date: Date, lessons: [Lesson])]) -> String {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "en_US")
-        fmt.dateFormat = "EEEE"
+        let dayFmt = DateFormatter()
+        dayFmt.locale = Locale(identifier: "en_US")
+        dayFmt.dateFormat = "EEE"
 
-        let total = week.reduce(0) { $0 + $1.lessons.count }
-        var lines = ["University timetable — \(total) lectures this week:"]
+        let now = Date()
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: now)
 
-        for (date, lessons) in week where !lessons.isEmpty {
-            let items = lessons.map { "\($0.startTime)–\($0.endTime) \($0.title)" }.joined(separator: "; ")
-            lines.append("\(fmt.string(from: date)): \(items)")
+        func describe(_ l: Lesson) -> String {
+            var s = "\(l.title) (\(l.startTime)–\(l.endTime)"
+            if !l.room.isEmpty { s += ", \(l.room)" }
+            s += ")"
+            return s
         }
 
-        lines.append(
-            "\nWrite a 1–2 sentence plain-English summary for a university student. " +
-            "Call out the busiest day, any back-to-back lectures, or if it's a light week. " +
-            "Be concise and friendly. No bullet points or lists."
-        )
+        var pastDays: [String] = []
+        var todayLine: String? = nil
+        var futureDays: [String] = []
+
+        for (date, lessons) in week where !lessons.isEmpty {
+            let name = dayFmt.string(from: date)
+            let items = lessons.map { describe($0) }.joined(separator: ", ")
+            let line = "\(name): \(items)"
+            if cal.isDate(date, inSameDayAs: today) {
+                todayLine = line
+            } else if date < today {
+                pastDays.append(line)
+            } else {
+                futureDays.append(line)
+            }
+        }
+
+        var lines = ["This week's lecture schedule. Use only what is listed — do not invent anything."]
+        if !pastDays.isEmpty {
+            lines.append("ALREADY PAST:")
+            pastDays.forEach { lines.append("  \($0)") }
+        }
+        if let t = todayLine {
+            lines.append("TODAY (\(dayFmt.string(from: now))):")
+            lines.append("  \(t)")
+        }
+        if !futureDays.isEmpty {
+            lines.append("STILL AHEAD:")
+            futureDays.forEach { lines.append("  \($0)") }
+        }
+
+        lines.append("""
+
+The schedule above has been computed by the app and is exact. Do not alter, reinterpret, or contradict it.
+
+Rewrite it as 1–2 natural sentences addressed to the student (use "you"). Include subject names, days, and times. Describe the shape of the week — what's already behind them and what's still to come. Do not add anything not listed above.
+""")
         return lines.joined(separator: "\n")
     }
 }
@@ -424,11 +459,13 @@ struct AIDailyBriefCard: View {
     @State private var generatedForKey = ""
 
     private var briefKey: String {
+        let cal = Calendar.current
+        let block = cal.component(.hour, from: now)  // refreshes every hour
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.dateFormat = "yyyy-MM-dd"
         let ids = lessons.map { $0.id }.sorted().joined(separator: ",")
-        return "\(fmt.string(from: now)):\(ids)"
+        return "\(fmt.string(from: now))-\(block):\(ids)"
     }
 
     var body: some View {
@@ -537,32 +574,51 @@ enum DailyBriefService {
         let active = lessons.first {
             $0.startTime.minutesSinceMidnight <= nowMins && nowMins < $0.endTime.minutesSinceMidnight
         }
+        let upcoming = lessons.filter { $0.startTime.minutesSinceMidnight > nowMins }
 
-        var lines = [
-            "Current time: \(timeFmt.string(from: now)) (\(dayFmt.string(from: now))).",
-            "EXACT schedule for today (do not change or invent any names, times, or rooms):"
-        ]
-        for l in lessons {
-            var entry = "- [\(l.startTime)–\(l.endTime)] \(l.title)"
-            if !l.room.isEmpty { entry += ", room \(l.room)" }
-            if !l.professor.isEmpty { entry += ", \(l.professor)" }
-            let status: String
-            if done.contains(where: { $0.id == l.id }) {
-                status = "DONE"
-            } else if active?.id == l.id {
-                status = "IN PROGRESS"
-            } else {
-                status = "UPCOMING"
-            }
-            entry += " (\(status))"
-            lines.append(entry)
+        func minsUntil(_ startTime: String) -> Int {
+            startTime.minutesSinceMidnight - nowMins
         }
-        lines.append(
-            "\nTask: Write exactly 1 short, friendly sentence summarising the day from the student's current perspective." +
-            " Use ONLY the data listed above — do not invent, rename, or add any lectures, times, rooms, or people." +
-            " No bullet points, no quotes."
-        )
-        return lines.joined(separator: "\n")
+
+        func relativeTime(mins: Int) -> String {
+            if mins < 60 { return "in \(mins) min" }
+            let h = mins / 60, m = mins % 60
+            return m == 0 ? "in \(h)h" : "in \(h)h \(m)m"
+        }
+
+        func labelDone(_ l: Lesson) -> String {
+            var s = "\(l.title) (\(l.startTime)–\(l.endTime)"
+            if !l.room.isEmpty { s += ", \(l.room)" }
+            return s + ")"
+        }
+
+        func labelAhead(_ l: Lesson) -> String {
+            let delta = minsUntil(l.startTime)
+            var s = "\(l.title) at \(l.startTime) (\(relativeTime(mins: delta))"
+            if !l.room.isEmpty { s += ", \(l.room)" }
+            return s + ")"
+        }
+
+        let statusLine: String
+        if let a = active {
+            var s = "IN PROGRESS: \(a.title), \(a.startTime)–\(a.endTime)"
+            if !a.room.isEmpty { s += ", \(a.room)" }
+            statusLine = s
+        } else {
+            statusLine = "NOTHING IN PROGRESS at \(timeFmt.string(from: now))"
+        }
+
+        return """
+These facts are exact and app-computed. Do not alter or contradict them.
+
+TIME: \(timeFmt.string(from: now)), \(dayFmt.string(from: now))
+STATUS: \(statusLine)
+DONE: \(done.isEmpty ? "none" : done.map { labelDone($0) }.joined(separator: ", "))
+AHEAD: \(upcoming.isEmpty ? "none" : upcoming.map { labelAhead($0) }.joined(separator: ", "))
+
+Write 1–2 sentences for the student (use "you"). Use the subject names, times, and rooms from above.
+Rule: only use words like "currently", "right now", or "in progress" if STATUS says IN PROGRESS. Otherwise describe what's done and what's coming up.
+"""
     }
 }
 
@@ -570,8 +626,7 @@ enum DailyBriefService {
 
 @available(iOS 26.0, *)
 struct AIScheduleAssistantSheet: View {
-    let todayLessons: [Lesson]
-    let weekLessons: [(date: Date, lessons: [Lesson])]
+    @ObservedObject var model: AppModel
 
     struct Message: Identifiable {
         let id = UUID()
@@ -580,12 +635,25 @@ struct AIScheduleAssistantSheet: View {
         enum Role { case user, assistant }
     }
 
-    @State private var session = LanguageModelSession()
+    @State private var session: LanguageModelSession
     @State private var messages: [Message] = []
+    @State private var streamingText = ""
     @State private var inputText = ""
     @State private var isResponding = false
     @FocusState private var inputFocused: Bool
     @Environment(\.dismiss) private var dismiss
+
+    private static let suggestions = [
+        "What's left for me today?",
+        "Any back-to-backs this week?",
+        "What's my busiest day?",
+        "When does my day start tomorrow?",
+    ]
+
+    init(model: AppModel) {
+        self._model = ObservedObject(wrappedValue: model)
+        self._session = State(initialValue: LanguageModelSession(instructions: Self.systemInstructions(model: model)))
+    }
 
     var body: some View {
         NavigationStack {
@@ -593,9 +661,17 @@ struct AIScheduleAssistantSheet: View {
                 messageList
                 inputBar
             }
-            .navigationTitle("Schedule Assistant")
+            .navigationTitle("UniVRse")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { rebuildSession() } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.subheadline)
+                    }
+                    .tint(Color.uiTextMuted)
+                    .disabled(messages.isEmpty)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                         .font(.subheadline.weight(.semibold))
@@ -606,25 +682,54 @@ struct AIScheduleAssistantSheet: View {
         .onAppear { inputFocused = true }
     }
 
+    private func rebuildSession() {
+        session = LanguageModelSession(instructions: Self.systemInstructions(model: model))
+        messages = []
+        streamingText = ""
+    }
+
+    // MARK: - Message list
+
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    if messages.isEmpty {
-                        emptyState.padding(.top, 40)
+                LazyVStack(spacing: 10) {
+                    if messages.isEmpty && !isResponding {
+                        emptyState.padding(.top, 32)
                     }
                     ForEach(messages) { msg in
-                        messageBubble(msg).id(msg.id)
+                        messageBubble(msg)
+                            .id(msg.id)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: msg.role == .user ? .trailing : .leading).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                     }
                     if isResponding {
-                        typingIndicator.id("typing")
+                        if streamingText.isEmpty {
+                            assistantRow { TypingDots() } .id("typing")
+                        } else {
+                            assistantRow {
+                                renderedText(streamingText + "▌", role: .assistant)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Color.uiTextPrimary)
+                            }
+                            .id("streaming")
+                        }
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: messages.count)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: messages.count) { _, _ in
                 withAnimation { proxy.scrollTo("bottom") }
+            }
+            .onChange(of: streamingText) { _, _ in
+                proxy.scrollTo("bottom")
             }
             .onChange(of: isResponding) { _, new in
                 if new { withAnimation { proxy.scrollTo("bottom") } }
@@ -632,159 +737,264 @@ struct AIScheduleAssistantSheet: View {
         }
     }
 
+    // MARK: - Empty state
+
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 32))
-                .foregroundStyle(Color.uiAccent)
-            Text("Ask about your schedule")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.uiTextPrimary)
-            Text("Try: \"Any back-to-back lectures?\" or \"What's my busiest day this week?\"")
-                .font(.system(size: 13))
-                .foregroundStyle(Color.uiTextMuted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
+        VStack(spacing: 24) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(uiAccentGradient)
+                        .frame(width: 52, height: 52)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                Text("UniVRse")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Color.uiTextPrimary)
+                Text("Your schedule, on demand.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.uiTextMuted)
+            }
+
+            VStack(spacing: 7) {
+                ForEach(Self.suggestions, id: \.self) { suggestion in
+                    Button { send(suggestion) } label: {
+                        HStack {
+                            Text(suggestion)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color.uiTextSecondary)
+                            Spacer()
+                            Image(systemName: "arrow.up.left")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.uiTextMuted)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Bubbles
+
     @ViewBuilder
     private func messageBubble(_ msg: Message) -> some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            if msg.role == .user { Spacer(minLength: 48) }
-            Group {
-                if msg.role == .assistant,
-                   let attributed = try? AttributedString(
-                    markdown: msg.text,
-                    options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-                   ) {
-                    Text(attributed)
-                } else {
-                    Text(msg.text)
-                }
+        if msg.role == .user {
+            HStack(spacing: 0) {
+                Spacer(minLength: 56)
+                renderedText(msg.text, role: .user)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(uiAccentGradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
-            .font(.system(size: 14))
-            .foregroundStyle(msg.role == .user ? Color.white : Color.uiTextPrimary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                msg.role == .user
-                    ? AnyShapeStyle(uiAccentGradient)
-                    : AnyShapeStyle(Color.uiSurface)
-            )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .frame(maxWidth: .infinity, alignment: msg.role == .user ? .trailing : .leading)
-            if msg.role == .assistant { Spacer(minLength: 48) }
+        } else {
+            assistantRow {
+                renderedText(msg.text, role: .assistant)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.uiTextPrimary)
+            }
         }
     }
 
-    private var typingIndicator: some View {
-        HStack {
-            HStack(spacing: 5) {
-                ForEach(0..<3, id: \.self) { _ in
-                    Circle().fill(Color.uiTextMuted.opacity(0.6)).frame(width: 7, height: 7)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            Spacer()
+    @ViewBuilder
+    private func assistantRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Circle()
+                .fill(uiAccentGradient)
+                .frame(width: 26, height: 26)
+                .overlay(
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                )
+            content()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 56)
         }
     }
+
+    @ViewBuilder
+    private func renderedText(_ text: String, role: Message.Role) -> some View {
+        if role == .assistant,
+           let attributed = try? AttributedString(
+               markdown: text,
+               options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+           ) {
+            Text(attributed)
+        } else {
+            Text(text)
+        }
+    }
+
+    // MARK: - Input bar
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Ask about your schedule…", text: $inputText, axis: .vertical)
+            TextField("Ask anything…", text: $inputText, axis: .vertical)
                 .font(.system(size: 15))
                 .foregroundStyle(Color.uiTextPrimary)
                 .lineLimit(1...4)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.uiSurfaceInput, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(Color.uiSurfaceInput, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .focused($inputFocused)
-                .onSubmit { sendMessage() }
+                .onSubmit { send(inputText) }
 
-            Button(action: sendMessage) {
-                Image(systemName: "arrow.up.circle.fill")
+            Button { send(inputText) } label: {
+                Image(systemName: isResponding ? "stop.circle.fill" : "arrow.up.circle.fill")
                     .font(.system(size: 32))
                     .foregroundStyle(
-                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding
+                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isResponding
                             ? Color.uiTextMuted : Color.uiAccent
                     )
+                    .animation(.easeInOut(duration: 0.15), value: isResponding)
             }
-            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding)
             .buttonStyle(.plain)
+            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isResponding)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.uiSurface)
+        .background(.regularMaterial)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.uiStroke).frame(height: 0.5)
         }
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
     }
 
-    private func sendMessage() {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+    // MARK: - Send
+
+    private func send(_ rawText: String) {
+        let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isResponding else { return }
         inputText = ""
         messages.append(Message(role: .user, text: text))
         isResponding = true
-
-        let isFirst = messages.count == 1
-        let payload = isFirst ? buildContextualPrompt(userMessage: text) : text
+        streamingText = ""
 
         Task {
             do {
-                let response = try await session.respond(to: payload)
-                let reply = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
-                messages.append(Message(role: .assistant, text: reply.isEmpty ? "I'm not sure. Try rephrasing." : reply))
+                var accumulated = ""
+                for try await partial in session.streamResponse(to: text) {
+                    let chunk = String(partial.content)
+                    accumulated = chunk
+                    streamingText = chunk
+                }
+                let reply = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                messages.append(Message(role: .assistant, text: reply.isEmpty ? "Not sure — try rephrasing." : reply))
             } catch {
-                messages.append(Message(role: .assistant, text: "Sorry, couldn't process that. Please try again."))
+                messages.append(Message(role: .assistant, text: "Something went wrong. Try again."))
             }
+            streamingText = ""
             isResponding = false
         }
     }
 
-    private func buildContextualPrompt(userMessage: String) -> String {
+    // MARK: - System instructions
+
+    private static func systemInstructions(model: AppModel) -> String {
+        let now = Date()
+        let cal = Calendar.current
+        let nowMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+
+        let timeFmt = DateFormatter()
+        timeFmt.locale = Locale(identifier: "en_US")
+        timeFmt.dateFormat = "HH:mm"
+
         let dateFmt = DateFormatter()
         dateFmt.locale = Locale(identifier: "en_US")
         dateFmt.dateFormat = "EEEE d MMMM"
 
-        let nowFmt = DateFormatter()
-        nowFmt.locale = Locale(identifier: "en_US")
-        nowFmt.dateFormat = "EEEE d MMMM 'at' HH:mm"
+        let dayFmt = DateFormatter()
+        dayFmt.locale = Locale(identifier: "en_US")
+        dayFmt.dateFormat = "EEEE"
 
-        let today = Calendar.current.startOfDay(for: Date())
+        let today = cal.startOfDay(for: now)
+        let weekLessons = model.lessonsGroupedByDay
 
         var lines = [
-            "SYSTEM: You are a university timetable assistant.",
-            "Today is \(nowFmt.string(from: Date())).",
-            "RULE: Only reference lecture titles, times, rooms, and professors that appear verbatim in the schedule below.",
-            "RULE: You may reason about dates (e.g. 'tomorrow', 'Monday') using the current date and the schedule.",
-            "RULE: Do not invent or rename any lecture, time, room, or professor.",
+            "You are UniVRse, a schedule assistant for a university student at the University of Verona.",
+            "Speak directly to the student using \"you\"/\"your\". Be conversational and concise — answer in 1–3 sentences unless more detail is explicitly asked for.",
+            "Use a cool, natural tone. Never say \"I have\" or speak from your own perspective.",
+            "You can handle casual conversation but always ground your answers in the schedule data below when relevant.",
             "",
-            "=== THIS WEEK'S SCHEDULE ==="
+            "Now: \(timeFmt.string(from: now)), \(dateFmt.string(from: now)).",
+            ""
         ]
-        for (date, lessons) in weekLessons where !lessons.isEmpty {
-            let isToday = Calendar.current.isDate(date, inSameDayAs: today)
-            let isTomorrow = Calendar.current.isDate(date, inSameDayAs: Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today)
-            var dayLabel = dateFmt.string(from: date)
-            if isToday { dayLabel += " (TODAY)" }
-            else if isTomorrow { dayLabel += " (TOMORROW)" }
-            lines.append("\(dayLabel):")
-            for l in lessons {
-                var entry = "  \(l.startTime)–\(l.endTime)  \(l.title)"
-                if !l.room.isEmpty { entry += "  |  Room: \(l.room)" }
-                if !l.professor.isEmpty { entry += "  |  \(l.professor)" }
+
+        let todayLessons = weekLessons.first(where: { cal.isDate($0.date, inSameDayAs: today) })?.lessons ?? []
+        if !todayLessons.isEmpty {
+            lines.append("TODAY:")
+            for l in todayLessons {
+                let endMins = l.endTime.minutesSinceMidnight
+                let startMins = l.startTime.minutesSinceMidnight
+                let tag = endMins <= nowMins ? "done" : startMins <= nowMins ? "now" : "ahead"
+                var entry = "  [\(tag)] \(l.startTime)–\(l.endTime) \(l.title)"
+                if !l.room.isEmpty { entry += " · \(l.room)" }
+                if !l.professor.isEmpty { entry += " · \(l.professor)" }
                 lines.append(entry)
             }
+            lines.append("")
         }
-        lines.append("")
-        lines.append("=== STUDENT QUESTION ===")
-        lines.append(userMessage)
+
+        let otherDays = weekLessons.filter { !cal.isDate($0.date, inSameDayAs: today) && !$0.lessons.isEmpty }
+        if !otherDays.isEmpty {
+            lines.append("REST OF WEEK:")
+            for (date, lessons) in otherDays {
+                let isTomorrow = cal.isDate(date, inSameDayAs: cal.date(byAdding: .day, value: 1, to: today) ?? today)
+                let label = isTomorrow ? "Tomorrow (\(dayFmt.string(from: date)))" : dayFmt.string(from: date)
+                let items = lessons.map { l -> String in
+                    var s = "\(l.startTime)–\(l.endTime) \(l.title)"
+                    if !l.room.isEmpty { s += " · \(l.room)" }
+                    return s
+                }.joined(separator: "; ")
+                lines.append("  \(label): \(items)")
+            }
+            lines.append("")
+        }
+
+        lines += [
+            "Rules:",
+            "- Only reference facts from the schedule above. Never invent titles, times, rooms, or professors.",
+            "- Reason about relative dates (tomorrow, Monday, etc.) using the current date.",
+            "- Keep answers short by default. Be direct.",
+        ]
         return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - Typing Dots
+
+@available(iOS 26.0, *)
+private struct TypingDots: View {
+    @State private var phase = false
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(Color.uiTextMuted.opacity(0.6))
+                    .frame(width: 7, height: 7)
+                    .offset(y: phase ? -4 : 0)
+                    .animation(
+                        .easeInOut(duration: 0.45)
+                            .repeatForever()
+                            .delay(Double(i) * 0.15),
+                        value: phase
+                    )
+            }
+        }
+        .onAppear { phase = true }
     }
 }
 

@@ -14,11 +14,19 @@
 		</data>
 		<key>Assets.car</key>
 		<data>
-		U9Z88+U/fwbn7n8surdbQ29agQo=
+		Guh5gRvdQd3MvJ56z1ZoNcxxJLI=
 		</data>
 		<key>Info.plist</key>
 		<data>
 		ikx2MC+Y7PKMJEO/sUngaVCHUOI=
+		</data>
+		<key>Metadata.appintents/extract.actionsdata</key>
+		<data>
+		UCpeu+rlvDQMIjhpl7sYeVd6HHk=
+		</data>
+		<key>Metadata.appintents/version.json</key>
+		<data>
+		NPlRq15GZra++9v4rEBA76D/YIs=
 		</data>
 		<key>PkgInfo</key>
 		<data>
@@ -30,19 +38,19 @@
 		</data>
 		<key>PlugIns/UniVROrariWidget.appex/UniVROrariWidget</key>
 		<data>
-		DOMvXdt4Ft2nsBXyVVbfHZjc72A=
+		gAMPprkN7slBwYfl5GbZnsC+dVU=
 		</data>
 		<key>PlugIns/UniVROrariWidget.appex/UniVROrariWidget.debug.dylib</key>
 		<data>
-		ieDZLBbaW0nMbHOZnKxnA5FUYYk=
+		v9YqeFeHoTlUf/kWoaT9SjSAkQ4=
 		</data>
 		<key>PlugIns/UniVROrariWidget.appex/_CodeSignature/CodeResources</key>
 		<data>
-		X0STGD5Wv2GevsPy2uOHVGb68FE=
+		kM7fmGuw+UR2d4XSOeeOoqDwW00=
 		</data>
 		<key>PlugIns/UniVROrariWidget.appex/__preview.dylib</key>
 		<data>
-		GRFrepFjt0vwHadwyI/CF33RPwQ=
+		daX6HtB1i8ypwx5BZucH0OV1JA0=
 		</data>
 		<key>PlugIns/UniVROrariWidget.appex/embedded.mobileprovision</key>
 		<data>
@@ -54,11 +62,11 @@
 		</data>
 		<key>UniVROrari.debug.dylib</key>
 		<data>
-		NhfoGoIZi9++yZ6w0EG5zGDwG4g=
+		joVSaBpH1PH4/M6bFdlb5fhffFU=
 		</data>
 		<key>__preview.dylib</key>
 		<data>
-		RWFyeSfS8sX/xflWGrZ8Of/Tv3M=
+		69xDQxdnxvR4ovckCBu+/jPDo8Y=
 		</data>
 		<key>embedded.mobileprovision</key>
 		<data>
@@ -85,7 +93,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			h4FX8Bq/qolC0LEcZdRwuJycAkAKpcOAFmd5582kE34=
+			7S3IskzH3Cu/e+sxRIvQEqfx36peYLrEAgDD/ijBNVE=
+			</data>
+		</dict>
+		<key>Metadata.appintents/extract.actionsdata</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			OkgFBYHtEwbYCRvRIe5LvNwfO+++NhjLiCg0iIFwYN0=
+			</data>
+		</dict>
+		<key>Metadata.appintents/version.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			urRgqhLYJepnd5JrqAEXNLT1v7JyHj/jyDPVFH0iHf0=
 			</data>
 		</dict>
 		<key>PlugIns/UniVROrariWidget.appex/Info.plist</key>
@@ -99,28 +121,28 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			OO2Xe5ItUTe4bcPtSv3Lc4gG7iYMmLWK7ZCaCgXmH7g=
+			KsfyA9driE/4K6q+4xIdsJd3sc0BttshpoJF4dStsp8=
 			</data>
 		</dict>
 		<key>PlugIns/UniVROrariWidget.appex/UniVROrariWidget.debug.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			0gBXjrUW/wofYz0AiEqv0hIBQ/IKh87+SCk80NdWEWM=
+			qzIWTxyYfprrfxwRgHgEhDrTeEuufSUGix4CIjURH64=
 			</data>
 		</dict>
 		<key>PlugIns/UniVROrariWidget.appex/_CodeSignature/CodeResources</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			q/UkIPjlwlfeuihBaU06g+b2SnnkQ2evzM5xFh2Ssso=
+			pQ74PksIVnTajOk4RTzi2neQLOWb9a89aH+kobCAvDo=
 			</data>
 		</dict>
 		<key>PlugIns/UniVROrariWidget.appex/__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			ThQvtk3699oa8jTdbElUI7wubabH6kPOdX9zygHdAoM=
+			puJBbTldPrBqMrfI8gy6aZ2gL4tX3kk2QL48Ppagqf0=
 			</data>
 		</dict>
 		<key>PlugIns/UniVROrariWidget.appex/embedded.mobileprovision</key>
@@ -141,14 +163,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			zx+/s3XW4G2VRMzGz3fwm+NPvzpA4Kv8x0XriMZYlyk=
+			73u0Fjr1PHvISopT4jvPPWVmd2m9bMM9JWceXojQl8o=
 			</data>
 		</dict>
 		<key>__preview.dylib</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			zv0Qv+HCSYPAWLyLH0vVNAJDZ/c3UehG3fpNuBXGqBE=
+			Rryx/fa5hY9DRmkPS58HVdnBh828i0g4bBWIiTNmPNI=
 			</data>
 		</dict>
 		<key>embedded.mobileprovision</key>

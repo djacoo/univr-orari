@@ -1080,10 +1080,7 @@ struct TodayView: View {
         .sheet(item: $selectedLesson) { lesson in LessonDetailSheet(lesson: lesson) }
         .sheet(isPresented: $showingAIAssistant) {
             if #available(iOS 26.0, *) {
-                AIScheduleAssistantSheet(
-                    todayLessons: todayLessons,
-                    weekLessons: model.lessonsGroupedByDay
-                )
+                AIScheduleAssistantSheet(model: model)
             }
         }
     }
@@ -1152,9 +1149,13 @@ struct TodayView: View {
             $0.startTime.minutesSinceMidnight <= nowMins && nowMins < $0.endTime.minutesSinceMidnight
         }) {
             activeLectureCard(lesson: active, nowMins: nowMins)
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .onTapGesture { selectedLesson = active }
         } else if let next = lessons.first(where: { $0.startTime.minutesSinceMidnight > nowMins }) {
             let diff = next.startTime.minutesSinceMidnight - nowMins
             nextLectureCard(lesson: next, diffMins: diff, now: now)
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .onTapGesture { selectedLesson = next }
         } else if !lessons.isEmpty {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")

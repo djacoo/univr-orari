@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>application-identifier</key>
+	<string>D3U3S86Y66.it.univr.orari</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>D3U3S86Y66</string>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.it.univr.orari</string>
+	</array>
+	<key>get-task-allow</key>
+	<true/>
+</dict>
+</plist>

@@ -1,7 +1,46 @@
 {
-  "version" : 1,
-  "source" : "ExtractedAppShortcutsMetadata",
+  "source" : "\/Users\/japo.\/Desktop\/univr-orari\/UniVROrari\/Sources\/App\/AIFeatures.swift",
   "tables" : {
-
-  }
+    "AppShortcuts" : [
+      {
+        "key" : "What's my next lecture in ${applicationName}",
+        "location" : {
+          "startingLine" : 182,
+          "startingColumn" : 0
+        },
+        "values" : [
+          "What's my next lecture in ${applicationName}",
+          "Next class in ${applicationName}",
+          "When is my next lesson in ${applicationName}",
+          "Am I in class right now in ${applicationName}",
+          "What lecture do I have now in ${applicationName}"
+        ]
+      },
+      {
+        "key" : "What classes do I have tomorrow in ${applicationName}",
+        "location" : {
+          "startingLine" : 182,
+          "startingColumn" : 0
+        },
+        "values" : [
+          "What classes do I have tomorrow in ${applicationName}",
+          "Tomorrow's schedule in ${applicationName}",
+          "What are my lectures tomorrow in ${applicationName}"
+        ]
+      },
+      {
+        "key" : "Where is my lecture in ${applicationName}",
+        "location" : {
+          "startingLine" : 182,
+          "startingColumn" : 0
+        },
+        "values" : [
+          "Where is my lecture in ${applicationName}",
+          "Find lecture room in ${applicationName}",
+          "What room is my class in ${applicationName}"
+        ]
+      }
+    ]
+  },
+  "version" : 1
 }
