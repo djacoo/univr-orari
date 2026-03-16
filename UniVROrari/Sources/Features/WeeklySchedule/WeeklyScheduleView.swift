@@ -958,6 +958,7 @@ struct TodayView: View {
 
     @State private var showingWeeklyCalendar = false
     @State private var selectedLesson: Lesson?
+    @State private var showingAIAssistant = false
 
     private var isWeekend: Bool {
         let w = Calendar.current.component(.weekday, from: Date())
@@ -1016,7 +1017,15 @@ struct TodayView: View {
                     dateAndCourseHeader(at: context.date)
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 16)
+
+                    if #available(iOS 26.0, *), SystemLanguageModel.default.isAvailable,
+                       !todayLessons.isEmpty, !model.isLoadingLessons {
+                        AIDailyBriefCard(lessons: todayLessons, now: context.date)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
 
                     if !model.isLoadingLessons {
                         heroSection(at: context.date)
@@ -1043,6 +1052,15 @@ struct TodayView: View {
                 yearPickerToolbar
             }
             ToolbarItem(placement: .topBarTrailing) {
+                if #available(iOS 26.0, *), SystemLanguageModel.default.isAvailable {
+                    Button { showingAIAssistant = true } label: {
+                        Image(systemName: "sparkles")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .tint(Color.uiAccent)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onEditProfile) {
                     Label("Profile", systemImage: "person.crop.circle.badge.gearshape")
                         .font(.subheadline.weight(.semibold))
@@ -1060,6 +1078,14 @@ struct TodayView: View {
             WeeklyScheduleView(model: model, onEditProfile: onEditProfile)
         }
         .sheet(item: $selectedLesson) { lesson in LessonDetailSheet(lesson: lesson) }
+        .sheet(isPresented: $showingAIAssistant) {
+            if #available(iOS 26.0, *) {
+                AIScheduleAssistantSheet(
+                    todayLessons: todayLessons,
+                    weekLessons: model.lessonsGroupedByDay
+                )
+            }
+        }
     }
 
     // MARK: Date + course header

@@ -411,3 +411,425 @@ enum WeeklySummaryService {
         return lines.joined(separator: "\n")
     }
 }
+
+// MARK: - AI Daily Brief Card (iOS 26+)
+
+@available(iOS 26.0, *)
+struct AIDailyBriefCard: View {
+    let lessons: [Lesson]
+    let now: Date
+
+    @State private var brief: String?
+    @State private var isGenerating = false
+    @State private var generatedForKey = ""
+
+    private var briefKey: String {
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.dateFormat = "yyyy-MM-dd"
+        let ids = lessons.map { $0.id }.sorted().joined(separator: ",")
+        return "\(fmt.string(from: now)):\(ids)"
+    }
+
+    var body: some View {
+        cardContent
+            .onAppear { trigger() }
+            .onChange(of: briefKey) { _, _ in trigger() }
+    }
+
+    private var cardContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color.uiAccent)
+                Text("DAILY BRIEF")
+                    .font(.system(size: 10, weight: .black))
+                    .tracking(1.5)
+                    .foregroundStyle(Color.uiAccent)
+                Spacer()
+                if isGenerating {
+                    ProgressView()
+                        .scaleEffect(0.55)
+                        .tint(Color.uiAccent)
+                } else if brief != nil {
+                    Button {
+                        brief = nil
+                        generatedForKey = ""
+                        trigger()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.uiTextMuted)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if let text = brief {
+                Text(text)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.uiTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            } else if isGenerating {
+                GeometryReader { geo in
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.uiTextMuted.opacity(0.18))
+                        .frame(width: geo.size.width * 0.8, height: 10)
+                }
+                .frame(height: 10)
+                .transition(.opacity)
+            }
+        }
+        .padding(14)
+        .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.uiAccent.opacity(0.14), lineWidth: 1)
+        )
+        .animation(.easeOut(duration: 0.3), value: brief)
+        .animation(.easeOut(duration: 0.3), value: isGenerating)
+    }
+
+    private func trigger() {
+        let key = briefKey
+        guard key != generatedForKey, !isGenerating else { return }
+        generatedForKey = key
+        brief = nil
+        isGenerating = true
+        Task {
+            brief = await DailyBriefService.generate(lessons: lessons, now: now)
+            isGenerating = false
+        }
+    }
+}
+
+// MARK: - Daily Brief Service (iOS 26+)
+
+@available(iOS 26.0, *)
+enum DailyBriefService {
+    static func generate(lessons: [Lesson], now: Date) async -> String? {
+        guard SystemLanguageModel.default.isAvailable else { return nil }
+        let session = LanguageModelSession()
+        do {
+            let response = try await session.respond(to: prompt(lessons: lessons, now: now))
+            let text = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        } catch {
+            return nil
+        }
+    }
+
+    private static func prompt(lessons: [Lesson], now: Date) -> String {
+        let cal = Calendar.current
+        let nowMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+
+        let timeFmt = DateFormatter()
+        timeFmt.locale = Locale(identifier: "en_US")
+        timeFmt.dateFormat = "HH:mm"
+
+        let dayFmt = DateFormatter()
+        dayFmt.locale = Locale(identifier: "en_US")
+        dayFmt.dateFormat = "EEEE"
+
+        let done = lessons.filter { $0.endTime.minutesSinceMidnight <= nowMins }
+        let active = lessons.first {
+            $0.startTime.minutesSinceMidnight <= nowMins && nowMins < $0.endTime.minutesSinceMidnight
+        }
+
+        var lines = [
+            "Current time: \(timeFmt.string(from: now)) (\(dayFmt.string(from: now))).",
+            "EXACT schedule for today (do not change or invent any names, times, or rooms):"
+        ]
+        for l in lessons {
+            var entry = "- [\(l.startTime)–\(l.endTime)] \(l.title)"
+            if !l.room.isEmpty { entry += ", room \(l.room)" }
+            if !l.professor.isEmpty { entry += ", \(l.professor)" }
+            let status: String
+            if done.contains(where: { $0.id == l.id }) {
+                status = "DONE"
+            } else if active?.id == l.id {
+                status = "IN PROGRESS"
+            } else {
+                status = "UPCOMING"
+            }
+            entry += " (\(status))"
+            lines.append(entry)
+        }
+        lines.append(
+            "\nTask: Write exactly 1 short, friendly sentence summarising the day from the student's current perspective." +
+            " Use ONLY the data listed above — do not invent, rename, or add any lectures, times, rooms, or people." +
+            " No bullet points, no quotes."
+        )
+        return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - AI Schedule Assistant Sheet (iOS 26+)
+
+@available(iOS 26.0, *)
+struct AIScheduleAssistantSheet: View {
+    let todayLessons: [Lesson]
+    let weekLessons: [(date: Date, lessons: [Lesson])]
+
+    struct Message: Identifiable {
+        let id = UUID()
+        let role: Role
+        let text: String
+        enum Role { case user, assistant }
+    }
+
+    @State private var session = LanguageModelSession()
+    @State private var messages: [Message] = []
+    @State private var inputText = ""
+    @State private var isResponding = false
+    @FocusState private var inputFocused: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                messageList
+                inputBar
+            }
+            .navigationTitle("Schedule Assistant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.subheadline.weight(.semibold))
+                        .tint(Color.uiAccent)
+                }
+            }
+        }
+        .onAppear { inputFocused = true }
+    }
+
+    private var messageList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    if messages.isEmpty {
+                        emptyState.padding(.top, 40)
+                    }
+                    ForEach(messages) { msg in
+                        messageBubble(msg).id(msg.id)
+                    }
+                    if isResponding {
+                        typingIndicator.id("typing")
+                    }
+                    Color.clear.frame(height: 1).id("bottom")
+                }
+                .padding(16)
+            }
+            .onChange(of: messages.count) { _, _ in
+                withAnimation { proxy.scrollTo("bottom") }
+            }
+            .onChange(of: isResponding) { _, new in
+                if new { withAnimation { proxy.scrollTo("bottom") } }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 32))
+                .foregroundStyle(Color.uiAccent)
+            Text("Ask about your schedule")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.uiTextPrimary)
+            Text("Try: \"Any back-to-back lectures?\" or \"What's my busiest day this week?\"")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.uiTextMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func messageBubble(_ msg: Message) -> some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            if msg.role == .user { Spacer(minLength: 48) }
+            Group {
+                if msg.role == .assistant,
+                   let attributed = try? AttributedString(
+                    markdown: msg.text,
+                    options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                   ) {
+                    Text(attributed)
+                } else {
+                    Text(msg.text)
+                }
+            }
+            .font(.system(size: 14))
+            .foregroundStyle(msg.role == .user ? Color.white : Color.uiTextPrimary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                msg.role == .user
+                    ? AnyShapeStyle(uiAccentGradient)
+                    : AnyShapeStyle(Color.uiSurface)
+            )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .frame(maxWidth: .infinity, alignment: msg.role == .user ? .trailing : .leading)
+            if msg.role == .assistant { Spacer(minLength: 48) }
+        }
+    }
+
+    private var typingIndicator: some View {
+        HStack {
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle().fill(Color.uiTextMuted.opacity(0.6)).frame(width: 7, height: 7)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Spacer()
+        }
+    }
+
+    private var inputBar: some View {
+        HStack(spacing: 10) {
+            TextField("Ask about your schedule…", text: $inputText, axis: .vertical)
+                .font(.system(size: 15))
+                .foregroundStyle(Color.uiTextPrimary)
+                .lineLimit(1...4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.uiSurfaceInput, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .focused($inputFocused)
+                .onSubmit { sendMessage() }
+
+            Button(action: sendMessage) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(
+                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding
+                            ? Color.uiTextMuted : Color.uiAccent
+                    )
+            }
+            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isResponding)
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.uiSurface)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.uiStroke).frame(height: 0.5)
+        }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 0) }
+    }
+
+    private func sendMessage() {
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !isResponding else { return }
+        inputText = ""
+        messages.append(Message(role: .user, text: text))
+        isResponding = true
+
+        let isFirst = messages.count == 1
+        let payload = isFirst ? buildContextualPrompt(userMessage: text) : text
+
+        Task {
+            do {
+                let response = try await session.respond(to: payload)
+                let reply = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                messages.append(Message(role: .assistant, text: reply.isEmpty ? "I'm not sure. Try rephrasing." : reply))
+            } catch {
+                messages.append(Message(role: .assistant, text: "Sorry, couldn't process that. Please try again."))
+            }
+            isResponding = false
+        }
+    }
+
+    private func buildContextualPrompt(userMessage: String) -> String {
+        let dateFmt = DateFormatter()
+        dateFmt.locale = Locale(identifier: "en_US")
+        dateFmt.dateFormat = "EEEE d MMMM"
+
+        let nowFmt = DateFormatter()
+        nowFmt.locale = Locale(identifier: "en_US")
+        nowFmt.dateFormat = "EEEE d MMMM 'at' HH:mm"
+
+        let today = Calendar.current.startOfDay(for: Date())
+
+        var lines = [
+            "SYSTEM: You are a university timetable assistant.",
+            "Today is \(nowFmt.string(from: Date())).",
+            "RULE: Only reference lecture titles, times, rooms, and professors that appear verbatim in the schedule below.",
+            "RULE: You may reason about dates (e.g. 'tomorrow', 'Monday') using the current date and the schedule.",
+            "RULE: Do not invent or rename any lecture, time, room, or professor.",
+            "",
+            "=== THIS WEEK'S SCHEDULE ==="
+        ]
+        for (date, lessons) in weekLessons where !lessons.isEmpty {
+            let isToday = Calendar.current.isDate(date, inSameDayAs: today)
+            let isTomorrow = Calendar.current.isDate(date, inSameDayAs: Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today)
+            var dayLabel = dateFmt.string(from: date)
+            if isToday { dayLabel += " (TODAY)" }
+            else if isTomorrow { dayLabel += " (TOMORROW)" }
+            lines.append("\(dayLabel):")
+            for l in lessons {
+                var entry = "  \(l.startTime)–\(l.endTime)  \(l.title)"
+                if !l.room.isEmpty { entry += "  |  Room: \(l.room)" }
+                if !l.professor.isEmpty { entry += "  |  \(l.professor)" }
+                lines.append(entry)
+            }
+        }
+        lines.append("")
+        lines.append("=== STUDENT QUESTION ===")
+        lines.append(userMessage)
+        return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - AI Notification Service (iOS 26+)
+
+@available(iOS 26.0, *)
+enum AINotificationService {
+    static func generateBody(lesson: Lesson, precedingLesson: Lesson?) async -> String {
+        guard SystemLanguageModel.default.isAvailable else { return fallback(lesson: lesson) }
+        let session = LanguageModelSession()
+        do {
+            let response = try await session.respond(to: prompt(lesson: lesson, precedingLesson: precedingLesson))
+            let text = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? fallback(lesson: lesson) : text
+        } catch {
+            return fallback(lesson: lesson)
+        }
+    }
+
+    private static func prompt(lesson: Lesson, precedingLesson: Lesson?) -> String {
+        let durationMins = lesson.endTime.minutesSinceMidnight - lesson.startTime.minutesSinceMidnight
+        var lines = [
+            "Write a 1-sentence notification body for a student about to attend a lecture.",
+            "Use ONLY the facts listed below. Do not invent anything not provided.",
+            "",
+            "Lecture: \(lesson.title)",
+            "Time: \(lesson.startTime)–\(lesson.endTime) (\(durationMins) minutes)"
+        ]
+        if !lesson.room.isEmpty { lines.append("Room: \(lesson.room)") }
+        if !lesson.professor.isEmpty { lines.append("Professor: \(lesson.professor)") }
+        if let prev = precedingLesson {
+            let gap = lesson.startTime.minutesSinceMidnight - prev.endTime.minutesSinceMidnight
+            if gap <= 5 {
+                lines.append("Note: immediately follows \(prev.title)")
+            } else if gap <= 20 {
+                lines.append("Note: \(gap)-minute gap after \(prev.title)")
+            }
+        }
+        lines.append("\nOutput: one sentence only, no quotes, no bullet points.")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func fallback(lesson: Lesson) -> String {
+        [lesson.startTime, lesson.room, lesson.professor]
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+}
