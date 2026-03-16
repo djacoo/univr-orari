@@ -9,19 +9,42 @@ struct RoomsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
+                VStack(spacing: 0) {
                     Color.clear.frame(height: 0).id("rooms-top")
-                    filterCard
-                    roomSearchCard
-                    roomsStateSection
-                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.isLoadingRooms)
-                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: model.roomsError)
-                    roomScheduleSection
-                        .animation(.spring(response: 0.38, dampingFraction: 0.84), value: activeRoomName)
+
+                    filterRow
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+
+                    Divider()
+                        .padding(.top, 16)
+                        .padding(.horizontal, 20)
+
+                    searchSection
+                        .padding(.top, 16)
+                        .padding(.horizontal, 20)
+
+                    if model.isLoadingRooms {
+                        loadingView
+                            .padding(.top, 40)
+                    } else if let err = model.roomsError {
+                        errorView(err)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                    } else if let roomName = activeRoomName {
+                        roomDetailSection(roomName: roomName)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 28)
+                    } else if !model.isLoadingRooms {
+                        emptyPrompt
+                            .padding(.horizontal, 20)
+                            .padding(.top, 48)
+                    }
+
+                    Color.clear.frame(height: 100)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
             }
+            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 80) }
             .scrollDismissesKeyboard(.immediately)
             .onChange(of: model.selectedRoomsDate) { _, _ in
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
@@ -39,9 +62,7 @@ struct RoomsView: View {
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedRoomsDate)
         .navigationTitle("Rooms")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable {
-            await model.refreshRooms()
-        }
+        .refreshable { await model.refreshRooms() }
         .task(id: "\(model.selectedBuilding?.id ?? "")|\(model.selectedRoomsDate.timeIntervalSince1970)") {
             guard !model.requiresInitialSetup else { return }
             await model.refreshRooms()
@@ -62,73 +83,101 @@ struct RoomsView: View {
         }
     }
 
-    private var filterCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    // MARK: - Filter row
+
+    private var filterRow: some View {
+        HStack(spacing: 12) {
             if model.isLoadingBuildings {
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(Color.uiAccent)
-                        .scaleEffect(1.1)
-                    Text("Loading buildings…")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.uiTextSecondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else if let buildingsError = model.buildingsError, model.buildings.isEmpty {
-                Text(buildingsError)
+                ProgressView().tint(Color.uiAccent).scaleEffect(0.9)
+                Text("Loading…")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
+            } else if let err = model.buildingsError, model.buildings.isEmpty {
+                Text(err)
+                    .font(.caption)
+                    .foregroundStyle(Color.uiTextSecondary)
             } else {
-                Picker("Building", selection: selectedBuildingBinding) {
+                Menu {
                     ForEach(model.buildings) { building in
-                        Text(building.name).tag(Optional(building))
+                        Button(building.name) { model.selectedBuilding = building }
                     }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "building.2")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(model.selectedBuilding?.name ?? "Building")
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.uiAccent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.uiAccent.opacity(0.10)))
                 }
-                .pickerStyle(.menu)
-                .tint(Color.uiAccent)
 
-                HStack(spacing: 10) {
-                    DatePicker(
-                        "Date",
-                        selection: $model.selectedRoomsDate,
-                        displayedComponents: [.date]
-                    )
+                DatePicker("", selection: $model.selectedRoomsDate, displayedComponents: [.date])
                     .datePickerStyle(.compact)
                     .tint(Color.uiAccent)
+                    .labelsHidden()
 
-                    if !Calendar.current.isDateInToday(model.selectedRoomsDate) {
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                                model.selectedRoomsDate = DateHelpers.startOfDay(for: Date())
-                            }
-                        } label: {
-                            Text("Today")
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(Capsule().fill(Color.uiSurfaceStrong))
-                                .foregroundStyle(Color.uiAccent)
+                if !Calendar.current.isDateInToday(model.selectedRoomsDate) {
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                            model.selectedRoomsDate = DateHelpers.startOfDay(for: Date())
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Jump to today")
-                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    } label: {
+                        Text("Today")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.uiAccent)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(Color.uiAccent.opacity(0.10)))
                     }
+                    .buttonStyle(.plain)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 }
-                .animation(.spring(response: 0.3, dampingFraction: 0.82), value: Calendar.current.isDateInToday(model.selectedRoomsDate))
             }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurfaceStrong)
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: Calendar.current.isDateInToday(model.selectedRoomsDate))
     }
 
-    private var roomSearchCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Search room")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.uiTextSecondary)
+    // MARK: - Search + chips
 
-                Spacer()
+    private var searchSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.uiTextMuted)
+                    TextField("Search room…", text: $roomSearchText)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.uiTextPrimary)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if !roomSearchText.isEmpty {
+                        Button {
+                            withAnimation(.spring(response: 0.22, dampingFraction: 0.75)) {
+                                roomSearchText = ""
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.uiTextMuted)
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .opacity(freeNowOnly ? 0.4 : 1)
+                .disabled(freeNowOnly)
+                .animation(.easeInOut(duration: 0.18), value: freeNowOnly)
 
                 if Calendar.current.isDateInToday(model.selectedRoomsDate) {
                     Button {
@@ -138,208 +187,304 @@ struct RoomsView: View {
                             roomSearchText = ""
                         }
                     } label: {
-                        Label("Free now", systemImage: "door.left.hand.open")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(freeNowOnly ? Color.uiAccentSecondary : Color.uiSurfaceInput))
-                            .foregroundStyle(freeNowOnly ? .white : Color.uiTextSecondary)
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(freeNowOnly ? .white : Color.uiAccentSecondary)
+                                .frame(width: 6, height: 6)
+                            Text("Free")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(freeNowOnly ? .white : Color.uiAccentSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule().fill(freeNowOnly ? Color.uiAccentSecondary : Color.uiAccentSecondary.opacity(0.12))
+                        )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressButtonStyle(scale: 0.92))
                     .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: freeNowOnly)
                     .accessibilityLabel("Show rooms free right now")
                     .accessibilityAddTraits(freeNowOnly ? .isSelected : [])
                 }
             }
 
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color.uiAccent)
-                TextField("e.g. T.03", text: $roomSearchText)
-                    .foregroundStyle(Color.uiTextPrimary)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.uiSurfaceInput)
-            )
-            .opacity(freeNowOnly ? 0.4 : 1)
-            .disabled(freeNowOnly)
-
-            if !roomSuggestions.isEmpty {
+            if !displayedRoomSuggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(displayedRoomSuggestions, id: \.self) { roomName in
-                            Button {
-                                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
-                                    selectedRoomName = roomName
-                                    roomSearchText = roomName
-                                }
-                            } label: {
-                                Text(roomName)
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        Capsule()
-                                            .fill(selectedRoomName == roomName ? Color.uiAccent.opacity(0.18) : Color.uiSurfaceInput)
-                                    )
-                                    .foregroundStyle(selectedRoomName == roomName ? Color.uiAccent : Color.uiTextPrimary)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(roomName)
-                            .accessibilityAddTraits(selectedRoomName == roomName ? .isSelected : [])
+                        ForEach(displayedRoomSuggestions, id: \.self) { name in
+                            roomChip(name)
                         }
                     }
+                    .padding(.horizontal, 1)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
     }
 
-    @ViewBuilder
-    private var roomsStateSection: some View {
-        if model.isLoadingRooms {
-            VStack(spacing: 16) {
-                ProgressView()
-                    .tint(Color.uiAccent)
-                    .scaleEffect(1.5)
-                    .frame(height: 28)
-                Text("Loading room availability…")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.uiTextSecondary)
+    private func roomChip(_ name: String) -> some View {
+        let isSelected = selectedRoomName == name
+        let isFree = freeNowOnly && isCurrentlyFree(name)
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                selectedRoomName = name
+                roomSearchText = name
             }
-            .frame(maxWidth: .infinity)
+        } label: {
+            HStack(spacing: 5) {
+                if isFree {
+                    Circle()
+                        .fill(Color.uiAccentSecondary)
+                        .frame(width: 5, height: 5)
+                }
+                Text(name)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? Color.uiAccent : Color.uiTextPrimary)
+            }
+            .padding(.horizontal, 13)
             .padding(.vertical, 8)
-            .liquidCard(cornerRadius: 18, tint: Color.uiSurface)
-            .transition(.opacity)
-        } else if let roomsError = model.roomsError {
-            let isOffline = roomsError.localizedCaseInsensitiveContains("offline")
-            VStack(alignment: .leading, spacing: 6) {
-                Label(
-                    isOffline ? "Offline data" : "Load error",
-                    systemImage: isOffline ? "wifi.slash" : "exclamationmark.triangle"
-                )
-                .font(.headline)
-                .foregroundStyle(isOffline ? Color.uiTextSecondary : Color.uiTextPrimary)
-                Text(roomsError)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.uiTextSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .liquidCard(cornerRadius: 18, tint: isOffline ? Color.uiSurface : Color.red.opacity(0.16))
-            .transition(.opacity)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.uiAccent.opacity(0.10) : Color.uiSurface)
+                    .overlay(
+                        Capsule().strokeBorder(isSelected ? Color.uiAccent.opacity(0.35) : Color.clear, lineWidth: 1)
+                    )
+            )
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    @ViewBuilder
-    private var roomScheduleSection: some View {
-        if let roomName = activeRoomName {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
+    // MARK: - Room detail
+
+    private func roomDetailSection(roomName: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(roomName)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(Color.uiTextPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer()
-
                     Text(DateHelpers.dayMonthFormatter.string(from: model.selectedRoomsDate).capitalized)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.uiAccent)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.uiTextMuted)
                 }
+                Spacer()
+                nowStatusBadge(for: roomName)
+            }
+            .padding(.bottom, 20)
 
-                if selectedRoomLessons.isEmpty {
-                    Text("No bookings today.")
+            // Occupancy bar
+            occupancyBar(for: roomName)
+                .padding(.bottom, 8)
+            hourAxis
+                .padding(.bottom, 24)
+
+            Divider()
+
+            // Bookings
+            if selectedRoomLessons.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.uiAccentSecondary)
+                    Text("No bookings")
                         .font(.subheadline)
                         .foregroundStyle(Color.uiTextSecondary)
-                        .padding(.vertical, 4)
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(selectedRoomLessons) { lesson in
-                            RoomLessonRow(lesson: lesson)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .padding(.vertical, 16)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(selectedRoomLessons.enumerated()), id: \.element.id) { idx, lesson in
+                        if idx > 0 {
+                            Divider().padding(.leading, 62)
                         }
+                        RoomLessonRow(lesson: lesson)
                     }
                 }
+                .padding(.top, 4)
+            }
 
-                Divider()
-                    .overlay(Color.uiStrokeStrong)
+            // Free slots
+            if !selectedRoomFreeSlots.isEmpty {
+                Divider().padding(.top, 8)
 
-                Text("Free slots")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.uiTextSecondary)
+                Text("FREE SLOTS")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Color.uiTextMuted)
+                    .padding(.top, 16)
+                    .padding(.bottom, 10)
 
-                if selectedRoomFreeSlots.isEmpty {
-                    Text("No free slots detected.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.uiTextSecondary)
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(selectedRoomFreeSlots) { slot in
-                            HStack(spacing: 10) {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .foregroundStyle(Color.uiAccentSecondary)
-                                Text("\(slot.fromTime) - \(slot.toTime)")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Color.uiTextPrimary)
-                                Spacer()
+                VStack(spacing: 8) {
+                    ForEach(selectedRoomFreeSlots) { slot in
+                        HStack {
+                            Text("\(slot.fromTime) – \(slot.toTime)")
+                                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(Color.uiAccentSecondary)
+                            Spacer()
+                            let mins = freeSlotDuration(slot)
+                            if mins > 0 {
+                                Text(durationString(mins))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(Color.uiTextMuted)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(Color.uiSurface))
                             }
-                            .padding(10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.uiAccentSecondary.opacity(0.10))
-                            )
                         }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.uiAccentSecondary.opacity(0.07))
+                        )
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
-            .transition(.opacity)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Select a room")
-                    .font(.headline)
-                    .foregroundStyle(Color.uiTextPrimary)
-                Text("Search for a room to view its daily schedule and free periods.")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.uiTextSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .liquidCard(cornerRadius: 20, tint: Color.uiSurface)
-            .transition(.opacity)
         }
     }
 
-    private var selectedBuildingBinding: Binding<Building?> {
-        Binding(
-            get: { model.selectedBuilding },
-            set: { model.selectedBuilding = $0 }
+    private func nowStatusBadge(for roomName: String) -> some View {
+        let isToday = Calendar.current.isDateInToday(model.selectedRoomsDate)
+        guard isToday else { return AnyView(EmptyView()) }
+        let free = isCurrentlyFree(roomName)
+        return AnyView(
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(free ? Color.uiAccentSecondary : Color.red.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                Text(free ? "Free now" : "Occupied")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(free ? Color.uiAccentSecondary : Color.red.opacity(0.8))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule().fill(free ? Color.uiAccentSecondary.opacity(0.10) : Color.red.opacity(0.08))
+            )
         )
     }
 
-    private var roomSuggestions: [String] {
-        let base: [String]
-        if freeNowOnly {
-            base = model.allRoomNames.filter { isCurrentlyFree($0) }
-        } else {
-            base = model.allRoomNames
+    private func occupancyBar(for roomName: String) -> some View {
+        let dayStart = 8 * 60
+        let dayEnd = 22 * 60
+        let span = CGFloat(dayEnd - dayStart)
+        let isToday = Calendar.current.isDateInToday(model.selectedRoomsDate)
+
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.uiAccentSecondary.opacity(0.14))
+                    .frame(height: 10)
+
+                ForEach(selectedRoomLessons) { lesson in
+                    let s = CGFloat(max(0, lesson.fromTime.minutesSinceMidnight - dayStart))
+                    let e = CGFloat(min(span, CGFloat(lesson.toTime.minutesSinceMidnight - dayStart)))
+                    let x = s / span * geo.size.width
+                    let w = max(2, (e - s) / span * geo.size.width)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Color.uiAccent.opacity(0.7))
+                        .frame(width: w, height: 10)
+                        .offset(x: x)
+                }
+
+                if isToday {
+                    let cal = Calendar.current
+                    let now = Date()
+                    let nowMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+                    let clamped = max(dayStart, min(dayEnd, nowMins))
+                    let x = CGFloat(clamped - dayStart) / span * geo.size.width
+                    ZStack(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(Color.red)
+                            .frame(width: 2, height: 18)
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                            .offset(y: 4)
+                    }
+                    .offset(x: x - 1, y: -4)
+                }
+            }
+            .frame(height: 10)
         }
-        let query = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedQuery = query.searchNormalized
-        guard !normalizedQuery.isEmpty else { return base }
-        return base.filter { $0.searchNormalized.contains(normalizedQuery) }
+        .frame(height: 10)
+    }
+
+    private var hourAxis: some View {
+        HStack(spacing: 0) {
+            ForEach([8, 10, 12, 14, 16, 18, 20, 22], id: \.self) { hour in
+                Text(String(format: "%02d", hour))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Color.uiTextMuted)
+                    .frame(maxWidth: .infinity, alignment: hour == 8 ? .leading : (hour == 22 ? .trailing : .center))
+            }
+        }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 14) {
+            ProgressView().tint(Color.uiAccent).scaleEffect(1.2)
+            Text("Loading room availability…")
+                .font(.subheadline)
+                .foregroundStyle(Color.uiTextSecondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func errorView(_ msg: String) -> some View {
+        let isOffline = msg.localizedCaseInsensitiveContains("offline")
+        return HStack(spacing: 12) {
+            Image(systemName: isOffline ? "wifi.slash" : "exclamationmark.triangle")
+                .foregroundStyle(isOffline ? Color.uiTextMuted : .red)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isOffline ? "Offline data" : "Load error")
+                    .font(.subheadline.weight(.semibold))
+                Text(msg)
+                    .font(.caption)
+                    .foregroundStyle(Color.uiTextMuted)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            isOffline ? Color.uiSurface : Color.red.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+    }
+
+    private var emptyPrompt: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "door.left.hand.open")
+                .font(.system(size: 36))
+                .foregroundStyle(Color.uiTextMuted)
+                .padding(.bottom, 4)
+            Text("Find a room")
+                .font(.headline)
+                .foregroundStyle(Color.uiTextPrimary)
+            Text("Search by name or tap a chip to view its schedule and free periods.")
+                .font(.subheadline)
+                .foregroundStyle(Color.uiTextSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Helpers
+
+    private var roomSuggestions: [String] {
+        let base = freeNowOnly ? model.allRoomNames.filter { isCurrentlyFree($0) } : model.allRoomNames
+        let query = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines).searchNormalized
+        guard !query.isEmpty else { return base }
+        return base.filter { $0.searchNormalized.contains(query) }
     }
 
     private func isCurrentlyFree(_ roomName: String) -> Bool {
         guard Calendar.current.isDateInToday(model.selectedRoomsDate) else { return false }
         let now = Date()
-        let calendar = Calendar.current
-        let currentMins = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        let cal = Calendar.current
+        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
         return model.freeRoomSlots.filter { $0.roomName == roomName }.contains { slot in
             let from = slot.fromTime.split(separator: ":").compactMap { Int($0) }
             let to   = slot.toTime.split(separator: ":").compactMap { Int($0) }
@@ -348,20 +493,12 @@ struct RoomsView: View {
         }
     }
 
-    private var displayedRoomSuggestions: [String] {
-        Array(roomSuggestions.prefix(40))
-    }
+    private var displayedRoomSuggestions: [String] { Array(roomSuggestions.prefix(40)) }
 
     private var activeRoomName: String? {
-        if let selectedRoomName {
-            return selectedRoomName
-        }
-
+        if let selectedRoomName { return selectedRoomName }
         let query = roomSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            return nil
-        }
-
+        guard !query.isEmpty else { return nil }
         return roomSuggestions.first
     }
 
@@ -380,55 +517,64 @@ struct RoomsView: View {
             self.selectedRoomName = nil
         }
     }
+
+    private func freeSlotDuration(_ slot: FreeRoomSlot) -> Int {
+        let from = slot.fromTime.split(separator: ":").compactMap { Int($0) }
+        let to   = slot.toTime.split(separator: ":").compactMap { Int($0) }
+        guard from.count == 2, to.count == 2 else { return 0 }
+        return (to[0] * 60 + to[1]) - (from[0] * 60 + from[1])
+    }
+
+    private func durationString(_ mins: Int) -> String {
+        if mins < 60 { return "\(mins)m" }
+        let h = mins / 60; let m = mins % 60
+        return m == 0 ? "\(h)h" : "\(h)h\(m)m"
+    }
 }
+
+// MARK: - Room Lesson Row
 
 private struct RoomLessonRow: View {
     let lesson: RoomLesson
 
     var body: some View {
         HStack(spacing: 0) {
-            LinearGradient(
-                colors: [Color.uiAccent, Color.uiAccent.opacity(0.3)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(width: 4)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(lesson.fromTime)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.uiAccent)
+                Text(lesson.toTime)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Color.uiTextMuted)
+            }
+            .frame(width: 46)
 
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("\(lesson.fromTime) – \(lesson.toTime)")
-                        .font(.caption.weight(.bold))
-                        .kerning(0.2)
-                }
-                .foregroundStyle(Color.uiAccent)
+            Rectangle()
+                .fill(Color.uiAccent.opacity(0.4))
+                .frame(width: 2)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
 
+            VStack(alignment: .leading, spacing: 4) {
                 Text(lesson.subject)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.uiTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 10) {
                     if !lesson.professor.isEmpty {
-                        Label(lesson.professor, systemImage: "person.fill")
+                        Label(lesson.professor, systemImage: "person")
                             .lineLimit(1)
                     }
                     if !lesson.courseName.isEmpty {
-                        Text(lesson.courseName)
-                            .lineLimit(1)
+                        Text(lesson.courseName).lineLimit(1)
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(Color.uiTextSecondary)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.uiTextMuted)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 11)
+            .padding(.trailing, 12)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.uiSurfaceInput)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.vertical, 12)
     }
 }

@@ -1,0 +1,99 @@
+{
+  "" : {
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary.dia",
+    "emit-module-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary-emit-module.dia",
+    "pch" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrari-primary.swiftdeps"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/App/AppModel.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/AppModel~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/App/ContentView.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/App/UniVROrariApp.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVROrariApp~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/Data/UniVRAPIClient.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/UniVRAPIClient~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/Domain/DateHelpers.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/DateHelpers~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/Domain/Models.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/Models~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/Features/Rooms/RoomsView.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/RoomsView~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/UniVROrari/Sources/Features/WeeklySchedule/WeeklyScheduleView.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/WeeklyScheduleView~partial.swiftmodule"
+  },
+  "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/japo./Desktop/univr-orari/build/Build/Intermediates.noindex/UniVROrari.build/Debug-iphoneos/UniVROrari.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

@@ -14,6 +14,16 @@ struct ContentView: View {
     @State private var loaderName = "UniVR Orari"
     @State private var loaderDuration = 5.0
     @State private var loaderTask: Task<Void, Never>?
+    @AppStorage("preferredColorScheme") private var colorSchemePreference: String = "system"
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var resolvedColorScheme: ColorScheme? {
+        switch colorSchemePreference {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     private func showLoader(name: String, duration: Double, then action: (() -> Void)? = nil) {
         loaderTask?.cancel()
@@ -43,17 +53,6 @@ struct ContentView: View {
         )
     }
 
-    private var tabSelectionBinding: Binding<Int> {
-        Binding(
-            get: { selectedTab },
-            set: { newValue in
-                guard newValue != selectedTab else { return }
-                selectedTab = newValue
-                showLoader(name: newValue == 0 ? "Timetable" : "Rooms", duration: 1)
-            }
-        )
-    }
-
     var body: some View {
         Group {
             if model.requiresInitialSetup {
@@ -65,6 +64,7 @@ struct ContentView: View {
             }
         }
         .background { AppBackground() }
+        .preferredColorScheme(resolvedColorScheme)
         .animation(.spring(response: 0.48, dampingFraction: 0.86), value: model.requiresInitialSetup)
         .onAppear {
             syncSetupStateFromModel()
@@ -87,6 +87,9 @@ struct ContentView: View {
             }
             model.pendingShortcutAction = nil
         }
+        .task(id: colorScheme) {
+            model.refreshLiveActivity(isDark: colorScheme == .dark)
+        }
         .sheet(isPresented: profileSheetBinding) {
             ProfileView(model: model)
         }
@@ -100,36 +103,48 @@ struct ContentView: View {
         .sensoryFeedback(.success, trigger: model.requiresInitialSetup) { old, new in old && !new }
     }
 
-    private var mainTabs: some View {
-        TabView(selection: tabSelectionBinding) {
-            NavigationStack {
-                WeeklyScheduleView(
-                    model: model,
-                    onEditProfile: { showLoader(name: "Profile", duration: 1) { showingProfile = true } }
-                )
-            }
-            .tabItem { Label("Timetable", systemImage: "calendar") }
-            .tag(0)
+    private var todayLectureCount: Int {
+        model.lessonsGroupedByDay
+            .first(where: { Calendar.current.isDateInToday($0.date) })?
+            .lessons.count ?? 0
+    }
 
-            NavigationStack {
-                RoomsView(model: model)
+    private var mainTabs: some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                if selectedTab == 0 {
+                    NavigationStack {
+                        TodayView(
+                            model: model,
+                            onEditProfile: { showLoader(name: "Profile", duration: 1) { showingProfile = true } }
+                        )
+                    }
+                    .transition(.opacity)
+                } else {
+                    NavigationStack {
+                        RoomsView(model: model)
+                    }
+                    .transition(.opacity)
+                }
             }
-            .tabItem { Label("Rooms", systemImage: "door.left.hand.open") }
-            .tag(1)
+            .animation(.easeInOut(duration: 0.18), value: selectedTab)
+
+            FloatingTabBar(selectedTab: selectedTab, todayBadgeCount: todayLectureCount) { newTab in
+                guard newTab != selectedTab else { return }
+                selectedTab = newTab
+                showLoader(name: newTab == 0 ? "Timetable" : "Rooms", duration: 1)
+            }
         }
         .tint(Color.uiAccent)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
-        .sensoryFeedback(.impact(weight: .medium), trigger: selectedTab)
+        .sensoryFeedback(.selection, trigger: selectedTab)
     }
 
     private var setupView: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 20) {
                 setupHero
-                setupAcademicYearCard
-                setupCourseYearCard
-                setupCourseSearchCard
+                setupOptionsSection
+                setupSearchSection
 
                 if model.isLoadingCourses {
                     loadingSetupCard
@@ -140,95 +155,98 @@ struct ContentView: View {
                 }
 
                 setupContinueButton
-                    .padding(.top, 2)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, 22)
-            .padding(.vertical, 16)
+            .padding(.vertical, 20)
         }
         .scrollDismissesKeyboard(.immediately)
     }
 
     private var setupHero: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("UniVR Orari")
-                .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 14) {
+            Text("UNIVR · ORARI")
+                .font(.system(size: 10, weight: .black))
+                .tracking(4)
                 .foregroundStyle(Color.uiAccent)
 
-            Text("Your timetable.")
-                .font(.system(size: 36, weight: .black, design: .rounded))
-                .foregroundStyle(Color.uiTextPrimary)
+            VStack(alignment: .leading, spacing: -4) {
+                Text("Your")
+                    .font(.system(size: 48, weight: .black))
+                    .foregroundStyle(Color.uiTextPrimary)
+                Text("timetable.")
+                    .font(.system(size: 48, weight: .black))
+                    .foregroundStyle(Color.uiAccent)
+            }
 
-            Text("Select your degree programme to access your lecture schedule.")
+            Text("Select your degree programme to get started.")
                 .font(.subheadline)
                 .foregroundStyle(Color.uiTextSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 26, tint: Color.uiSurfaceStrong)
+        .padding(.top, 16)
+        .padding(.bottom, 4)
     }
 
-    private var setupAcademicYearCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Academic year")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.uiTextSecondary)
-
-            Picker("Academic year", selection: $setupSelectedAcademicYear) {
-                ForEach(model.availableAcademicYears, id: \.self) { academicYear in
-                    Text(model.academicYearLabel(for: academicYear)).tag(academicYear)
-                }
-            }
-            .pickerStyle(.menu)
-            .font(.headline.weight(.semibold))
-            .tint(Color.uiAccent)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
-        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: setupSelectedAcademicYear)
-    }
-
-    private var setupCourseYearCard: some View {
+    private var setupOptionsSection: some View {
         let maxYear = max(1, setupSelectedCourse?.maxYear ?? 3)
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Year of study")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.uiTextSecondary)
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ACADEMIC YEAR")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Color.uiTextMuted)
 
-            HStack(spacing: 0) {
-                ForEach(1...maxYear, id: \.self) { year in
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            model.selectedCourseYear = year
-                        }
-                    } label: {
-                        Text("\(year)°")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
-                            .background(
-                                model.selectedCourseYear == year
-                                    ? Color.uiAccent
-                                    : Color.clear
-                            )
-                            .foregroundStyle(
-                                model.selectedCourseYear == year
-                                    ? Color.white
-                                    : Color.uiTextSecondary
-                            )
+                Picker("Academic year", selection: $setupSelectedAcademicYear) {
+                    ForEach(model.availableAcademicYears, id: \.self) { academicYear in
+                        Text(model.academicYearLabel(for: academicYear)).tag(academicYear)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Year \(year)")
-                    .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
                 }
+                .pickerStyle(.menu)
+                .font(.headline.weight(.semibold))
+                .tint(Color.uiAccent)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.uiSurfaceInput)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedCourseYear)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("YEAR OF STUDY")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Color.uiTextMuted)
+
+                HStack(spacing: 0) {
+                    ForEach(1...maxYear, id: \.self) { year in
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                model.selectedCourseYear = year
+                            }
+                        } label: {
+                            Text("\(year)°")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 9)
+                                .background(
+                                    model.selectedCourseYear == year ? Color.uiAccent : Color.clear
+                                )
+                                .foregroundStyle(
+                                    model.selectedCourseYear == year ? Color.white : Color.uiTextSecondary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Year \(year)")
+                        .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
+                    }
+                }
+                .background(Color.uiSurfaceInput, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: model.selectedCourseYear)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
+        .padding(18)
+        .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: setupSelectedAcademicYear)
         .onChange(of: setupSelectedCourse) { _, newCourse in
             let newMax = newCourse?.maxYear ?? 3
             if model.selectedCourseYear > newMax {
@@ -237,11 +255,12 @@ struct ContentView: View {
         }
     }
 
-    private var setupCourseSearchCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Degree programme")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.uiTextSecondary)
+    private var setupSearchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DEGREE PROGRAMME")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(2)
+                .foregroundStyle(Color.uiTextMuted)
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
@@ -251,63 +270,64 @@ struct ContentView: View {
                     .foregroundStyle(Color.uiTextPrimary)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+
+                if !setupCourseSearch.isEmpty {
+                    Button {
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.75)) {
+                            setupCourseSearch = ""
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Color.uiTextMuted)
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(PressButtonStyle(scale: 0.88))
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
             .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.uiSurfaceInput)
-            )
+            .background(Color.uiSurfaceInput, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
     }
 
     private var setupCourseSelectionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Select your programme")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.uiTextSecondary)
-
-            LazyVStack(spacing: 8) {
-                ForEach(displayedSetupCourses) { course in
-                    Button {
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                            setupSelectedCourse = course
-                        }
-                    } label: {
-                        HStack(alignment: .top, spacing: 11) {
-                            Image(systemName: setupSelectedCourse?.id == course.id ? "checkmark.circle.fill" : "circle")
-                                .font(.headline)
-                                .foregroundStyle(setupSelectedCourse?.id == course.id ? Color.uiAccent : Color.uiTextSecondary)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(course.name)
-                                    .font(.subheadline.weight(.semibold))
-                                    .multilineTextAlignment(.leading)
-                                    .foregroundStyle(Color.uiTextPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                Text(course.facultyName)
-                                    .font(.caption)
-                                    .foregroundStyle(Color.uiTextMuted)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(setupSelectedCourse?.id == course.id ? Color.uiAccent.opacity(0.16) : Color.uiSurfaceInput)
-                        )
+        LazyVStack(spacing: 6) {
+            ForEach(displayedSetupCourses) { course in
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                        setupSelectedCourse = course
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(course.name)
-                    .accessibilityHint(course.facultyName)
-                    .accessibilityAddTraits(setupSelectedCourse?.id == course.id ? .isSelected : [])
+                } label: {
+                    HStack(alignment: .top, spacing: 11) {
+                        Image(systemName: setupSelectedCourse?.id == course.id ? "checkmark.circle.fill" : "circle")
+                            .font(.headline)
+                            .foregroundStyle(setupSelectedCourse?.id == course.id ? Color.uiAccent : Color.uiTextSecondary)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(course.name)
+                                .font(.subheadline.weight(.semibold))
+                                .multilineTextAlignment(.leading)
+                                .foregroundStyle(Color.uiTextPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Text(course.facultyName)
+                                .font(.caption)
+                                .foregroundStyle(Color.uiTextMuted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(setupSelectedCourse?.id == course.id ? Color.uiAccent.opacity(0.12) : Color.uiSurface)
+                    )
                 }
+                .buttonStyle(PressButtonStyle())
+                .accessibilityLabel(course.name)
+                .accessibilityHint(course.facultyName)
+                .accessibilityAddTraits(setupSelectedCourse?.id == course.id ? .isSelected : [])
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: setupSelectedCourse?.id)
     }
 
@@ -320,7 +340,8 @@ struct ContentView: View {
                 .foregroundStyle(Color.uiTextSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
+        .padding(18)
+        .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var emptySetupCard: some View {
@@ -340,9 +361,7 @@ struct ContentView: View {
             }
 
             Button {
-                Task {
-                    await model.loadCourses()
-                }
+                Task { await model.loadCourses() }
             } label: {
                 Label("Reload", systemImage: "arrow.clockwise")
                     .font(.subheadline.weight(.semibold))
@@ -352,7 +371,8 @@ struct ContentView: View {
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 22, tint: Color.uiSurface)
+        .padding(18)
+        .background(Color.uiSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var setupContinueButton: some View {
@@ -396,6 +416,7 @@ struct ContentView: View {
             .shadow(color: Color.uiAccent.opacity(selectedCourse == nil ? 0 : 0.32), radius: 14, x: 0, y: 7)
         }
         .disabled(selectedCourse == nil || isApplyingSetup)
+        .buttonStyle(PressButtonStyle(scale: 0.97))
     }
 
     private var setupFilteredCourses: [StudyCourse] {
@@ -405,10 +426,15 @@ struct ContentView: View {
             return model.allCourses
         }
 
-        return model.allCourses.filter { course in
+        let substringMatches = model.allCourses.filter { course in
             course.name.searchNormalized.contains(normalizedQuery)
                 || course.facultyName.searchNormalized.contains(normalizedQuery)
         }
+
+        // When substring search finds nothing, fall back to semantic ranking so
+        // queries like "calculus" or "databases" still surface relevant courses.
+        if !substringMatches.isEmpty { return substringMatches }
+        return SemanticCourseSearch.rank(query: query, courses: model.allCourses)
     }
 
     private var displayedSetupCourses: [StudyCourse] {
@@ -434,68 +460,14 @@ struct ContentView: View {
 }
 
 struct ProfileBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        let isDark = colorScheme == .dark
-        ZStack {
-            LinearGradient(
-                colors: isDark
-                    ? [Color(hex: "1C1610"), Color(hex: "1A1F1D")]
-                    : [Color(hex: "FDF8F2"), Color(hex: "EDCFB8")],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            Circle()
-                .fill(RadialGradient(
-                    colors: [Color.uiAccent.opacity(isDark ? 0.14 : 0.22), Color.uiAccent.opacity(0)],
-                    center: .center, startRadius: 0, endRadius: 330
-                ))
-                .frame(width: 520, height: 520)
-                .offset(x: 90, y: -170)
-
-            Circle()
-                .fill(RadialGradient(
-                    colors: [Color(hex: "3F6D5D").opacity(isDark ? 0.10 : 0.18), Color(hex: "3F6D5D").opacity(0)],
-                    center: .center, startRadius: 0, endRadius: 280
-                ))
-                .frame(width: 450, height: 450)
-                .offset(x: -110, y: 210)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
+        Color.uiBackground.ignoresSafeArea()
     }
 }
 
 struct AppBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        let isDark = colorScheme == .dark
-        ZStack {
-            LinearGradient(
-                colors: [Color.uiBackgroundTop, Color.uiBackgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobCyan.opacity(isDark ? 0.22 : 0.78), Color.uiBlobCyan.opacity(0)], center: .center, startRadius: 1, endRadius: 310))
-                .frame(width: 390, height: 390)
-                .offset(x: -100, y: -280)
-
-            Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobBlue.opacity(isDark ? 0.18 : 0.55), Color.uiBlobBlue.opacity(0)], center: .center, startRadius: 1, endRadius: 350))
-                .frame(width: 430, height: 430)
-                .offset(x: 155, y: 240)
-
-            Circle()
-                .fill(RadialGradient(colors: [Color.uiBlobViolet.opacity(isDark ? 0.14 : 0.50), Color.uiBlobViolet.opacity(0)], center: .center, startRadius: 1, endRadius: 270))
-                .frame(width: 350, height: 350)
-                .offset(x: 175, y: -215)
-        }
-        .ignoresSafeArea()
+        Color.uiBackground.ignoresSafeArea()
     }
 }
 
@@ -506,58 +478,91 @@ struct LoaderView: View {
     @State private var progress: Double = 0
     @State private var step: Int = 0
 
+    private func fireDroplet(progress: Double) {
+        Task { @MainActor in
+            let base = 0.16 + 0.84 * max(0, min(progress, 1))
+            let style: UIImpactFeedbackGenerator.FeedbackStyle = base < 0.48 ? .light : (base < 0.74 ? .medium : .heavy)
+            let gen = UIImpactFeedbackGenerator(style: style)
+            let ripple = UIImpactFeedbackGenerator(style: .light)
+            gen.prepare()
+            ripple.prepare()
+            gen.impactOccurred(intensity: min(base, 1.0))
+            try? await Task.sleep(for: .milliseconds(65))
+            ripple.impactOccurred(intensity: min(base * 0.62, 1.0))
+            try? await Task.sleep(for: .milliseconds(58))
+            ripple.impactOccurred(intensity: min(base * 0.26, 1.0))
+        }
+    }
+
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: [Color(hex: "1E1B4B"), Color(hex: "312E81"), Color(hex: "4F46E5")],
+                startPoint: .bottomLeading,
+                endPoint: .topTrailing
+            )
+            .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
+            Circle()
+                .fill(Color(hex: "818CF8").opacity(0.30))
+                .frame(width: 380, height: 380)
+                .blur(radius: 90)
+                .offset(x: 130, y: -240)
+
+            VStack(spacing: 0) {
                 Spacer()
 
-                VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Loading")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .shadow(color: .white.opacity(0.5), radius: 8)
-                        Text(name + "...")
-                            .font(.system(size: 38, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .shadow(color: .white.opacity(0.6), radius: 14)
-                            .shadow(color: .white.opacity(0.25), radius: 28)
-                            .lineLimit(2)
-                    }
+                VStack(spacing: 32) {
+                    Text("UNIVR · ORARI")
+                        .font(.system(size: 10, weight: .black))
+                        .tracking(6)
+                        .foregroundStyle(.white.opacity(0.4))
 
-                    VStack(alignment: .trailing, spacing: 10) {
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color.white.opacity(0.12))
-                                    .frame(height: 5)
-                                Capsule()
-                                    .fill(Color.white)
-                                    .frame(width: max(5, geo.size.width * progress), height: 5)
-                                    .shadow(color: .white.opacity(0.9), radius: 6)
-                                    .shadow(color: .white.opacity(0.4), radius: 14)
-                            }
-                        }
-                        .frame(height: 5)
+                    Text(name)
+                        .font(.system(size: 48, weight: .black))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
 
-                        Text("\(step)%")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.65))
-                            .monospacedDigit()
-                            .shadow(color: .white.opacity(0.4), radius: 6)
-                    }
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.2)
                 }
-                .padding(.horizontal, 36)
-                .padding(.bottom, 100)
+
+                Spacer()
+
+                VStack(spacing: 14) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(.white.opacity(0.18))
+                                .frame(height: 3)
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(.white)
+                                .frame(width: geo.size.width * progress, height: 3)
+                                .animation(.easeInOut(duration: duration), value: progress)
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.horizontal, 40)
+
+                    Text("\(step)%")
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.4))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+                .padding(.bottom, 60)
             }
+            .frame(maxWidth: .infinity)
         }
         .task {
             withAnimation(.easeInOut(duration: duration)) {
                 progress = 1.0
             }
+            fireDroplet(progress: 0)
             let stepDuration = duration / 100.0
+            let dropletInterval = 0.09
+            var nextDropletAt = dropletInterval
             for i in 1...100 {
                 do {
                     try await Task.sleep(for: .seconds(stepDuration))
@@ -565,6 +570,11 @@ struct LoaderView: View {
                     break
                 }
                 step = i
+                let elapsed = Double(i) * stepDuration
+                if elapsed >= nextDropletAt {
+                    nextDropletAt += dropletInterval
+                    fireDroplet(progress: elapsed / duration)
+                }
             }
         }
     }
@@ -576,18 +586,9 @@ struct LiquidCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(tint)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Color.uiCardStroke, lineWidth: 0.5)
-            )
-            .compositingGroup()
-            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-            .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
+            .padding(18)
+            .background(tint, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: .black.opacity(0.09), radius: 20, x: 0, y: 6)
     }
 }
 
@@ -597,30 +598,56 @@ extension View {
     }
 }
 
+struct PressButtonStyle: ButtonStyle {
+    var scale: CGFloat = 0.94
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
 extension Color {
-    static let uiBackgroundTop    = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "1C1610") : UIColor(hex: "F5EFE4") })
-    static let uiBackgroundBottom = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "111A17") : UIColor(hex: "D0E9CB") })
+    static let uiBackground = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "09090B") : UIColor(hex: "FFFFFF")
+    })
 
-    static let uiAccent          = Color(hex: "C65D3D")
-    static let uiAccentSecondary = Color(hex: "3F6D5D")
+    static let uiAccent          = Color(hex: "6366F1")
+    static let uiAccentSecondary = Color(hex: "34D399")
 
-    static let uiBlobCyan   = Color(hex: "7ECFB5")
-    static let uiBlobBlue   = Color(hex: "F0A650")
-    static let uiBlobViolet = Color(hex: "D48FB2")
+    static let uiSurface = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "18181B") : UIColor(hex: "F4F4F5")
+    })
+    static let uiSurfaceStrong = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "27272A") : UIColor(hex: "E4E4E7")
+    })
+    static let uiSurfaceInput = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "3F3F46") : UIColor(hex: "D4D4D8")
+    })
 
-    static let uiSurface       = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "2B2419").withAlphaComponent(0.82) : .white.withAlphaComponent(0.76) })
-    static let uiSurfaceStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "332B1E").withAlphaComponent(0.94) : .white.withAlphaComponent(0.88) })
-    static let uiSurfaceInput  = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "3B3225").withAlphaComponent(0.98) : .white.withAlphaComponent(0.96) })
+    static let uiStroke = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.07) : .black.withAlphaComponent(0.07)
+    })
+    static let uiStrokeStrong = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.14) : .black.withAlphaComponent(0.14)
+    })
+    static let uiCardStroke = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.07) : .black.withAlphaComponent(0.07)
+    })
 
-    static let uiStroke       = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.06) : .black.withAlphaComponent(0.08) })
-    static let uiStrokeStrong = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.12) : .black.withAlphaComponent(0.16) })
-    static let uiCardStroke   = Color(UIColor { $0.userInterfaceStyle == .dark ? .white.withAlphaComponent(0.10) : .white.withAlphaComponent(0.55) })
+    static let uiTextPrimary = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "F4F4F5") : UIColor(hex: "09090B")
+    })
+    static let uiTextSecondary = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "A1A1AA") : UIColor(hex: "52525B")
+    })
+    static let uiTextMuted = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "71717A") : UIColor(hex: "A1A1AA")
+    })
 
-    static let uiTextPrimary   = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "F0EBE3") : UIColor(hex: "222733") })
-    static let uiTextSecondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "C2B4A6") : UIColor(hex: "394253") })
-    static let uiTextMuted     = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "8C7E72") : UIColor(hex: "5A6578") })
-
-    static let uiButtonDisabled = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: "4A4538") : UIColor(hex: "C8CCD5") })
+    static let uiButtonDisabled = Color(UIColor { t in
+        t.userInterfaceStyle == .dark ? UIColor(hex: "3F3F46") : UIColor(hex: "D4D4D8")
+    })
 }
 
 private func _parseHexRGB(_ hex: String) -> (r: Double, g: Double, b: Double) {
@@ -650,7 +677,7 @@ extension UIColor {
 }
 
 let uiAccentGradient = LinearGradient(
-    colors: [Color(hex: "C65D3D"), Color(hex: "9E4E6C")],
+    colors: [Color(hex: "818CF8"), Color(hex: "6366F1"), Color(hex: "4F46E5")],
     startPoint: .topLeading,
     endPoint: .bottomTrailing
 )
@@ -662,6 +689,105 @@ extension String {
             .filter(CharacterSet.alphanumerics.contains)
             .map(String.init)
             .joined()
+    }
+}
+
+// MARK: - Floating Tab Bar
+
+private struct FloatingTabBar: View {
+    let selectedTab: Int
+    let todayBadgeCount: Int
+    let onSelect: (Int) -> Void
+    @AppStorage("preferredColorScheme") private var colorSchemePreference: String = "system"
+
+    private let items: [(icon: String, label: String)] = [
+        ("calendar", "Today"),
+        ("building.2", "Rooms"),
+    ]
+
+    private var themeIcon: String {
+        switch colorSchemePreference {
+        case "light": return "sun.max.fill"
+        case "dark": return "moon.fill"
+        default: return "circle.lefthalf.filled"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<items.count, id: \.self) { index in
+                Button {
+                    onSelect(index)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: items[index].icon)
+                            .font(.system(size: 16, weight: selectedTab == index ? .semibold : .regular))
+                            .overlay(alignment: .topTrailing) {
+                                if index == 0 && todayBadgeCount > 0 && selectedTab != 0 {
+                                    Text("\(todayBadgeCount)")
+                                        .font(.system(size: 8, weight: .black))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(Color.uiAccent))
+                                        .offset(x: 8, y: -6)
+                                        .transition(.scale.combined(with: .opacity))
+                                }
+                            }
+                        if selectedTab == index {
+                            Text(items[index].label)
+                                .font(.system(size: 12, weight: .semibold))
+                                .transition(.opacity.combined(with: .move(edge: .leading)))
+                        }
+                    }
+                    .foregroundStyle(selectedTab == index ? .white : Color.uiTextSecondary)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, selectedTab == index ? 22 : 20)
+                    .background(
+                        Capsule()
+                            .fill(selectedTab == index ? Color.uiAccent : Color.clear)
+                    )
+                    .animation(.spring(response: 0.32, dampingFraction: 0.78), value: selectedTab)
+                }
+                .buttonStyle(PressButtonStyle(scale: 0.90))
+                .accessibilityLabel(items[index].label)
+                .accessibilityAddTraits(selectedTab == index ? [.isSelected] : [])
+            }
+
+            Rectangle()
+                .fill(Color.uiStroke)
+                .frame(width: 1, height: 20)
+                .padding(.horizontal, 2)
+
+            Button {
+                let next: String
+                switch colorSchemePreference {
+                case "system": next = "light"
+                case "light": next = "dark"
+                default: next = "system"
+                }
+                withAnimation(.easeInOut(duration: 0.2)) { colorSchemePreference = next }
+            } label: {
+                Image(systemName: themeIcon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.uiTextSecondary)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(PressButtonStyle(scale: 0.88))
+            .accessibilityLabel("Toggle color scheme")
+        }
+        .padding(6)
+        .background(
+            Capsule()
+                .fill(Color.uiSurface)
+                .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 4)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(Color.uiStroke, lineWidth: 1)
+        )
+        .padding(.horizontal, 32)
+        .padding(.bottom, 24)
     }
 }
 
@@ -678,15 +804,205 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    avatarCard
-                    courseCard
-                    workerCard
-                    notificationsCard
-                    returnButton
+                VStack(spacing: 0) {
+                    avatarSection
+                        .padding(24)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        sectionHeader("PROGRAMME")
+
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(model.selectedCourse?.name ?? "No programme selected")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.uiTextPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+
+                            Button {
+                                showingCoursePicker = true
+                            } label: {
+                                Text("Change")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Color.uiAccent)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Capsule().fill(Color.uiAccent.opacity(0.12)))
+                            }
+                            .buttonStyle(PressButtonStyle(scale: 0.92))
+                            .accessibilityLabel("Change programme")
+                        }
+
+                        Divider()
+
+                        HStack(spacing: 8) {
+                            Text(model.selectedAcademicYearLabel)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.uiTextSecondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.uiSurfaceInput))
+
+                            Spacer()
+
+                            HStack(spacing: 2) {
+                                ForEach(1...max(1, model.selectedCourseMaxYear), id: \.self) { year in
+                                    Button {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            model.selectedCourseYear = year
+                                        }
+                                    } label: {
+                                        Text("\(year)°")
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 9)
+                                            .padding(.vertical, 5)
+                                            .background(
+                                                model.selectedCourseYear == year
+                                                    ? RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.uiAccent)
+                                                    : RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.clear)
+                                            )
+                                            .foregroundStyle(
+                                                model.selectedCourseYear == year ? Color.white : Color.uiTextSecondary
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Year \(year)")
+                                    .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
+                                }
+                            }
+                            .padding(3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.uiSurfaceInput)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        Toggle(isOn: $model.isWorker) {
+                            sectionHeader("WORK SHIFTS")
+                        }
+                        .tint(Color.uiAccent)
+
+                        if model.isWorker {
+                            Divider()
+
+                            VStack(spacing: 0) {
+                                ForEach(model.workShifts.indices, id: \.self) { index in
+                                    WorkShiftRow(shift: $model.workShifts[index])
+                                    if index < model.workShifts.count - 1 {
+                                        Divider()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.isWorker)
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        sectionHeader("NOTIFICATIONS")
+
+                        Toggle(isOn: $model.liveActivitiesEnabled) {
+                            Label("Live Activity", systemImage: "circle.filled.pattern.diagonalline.rectangle")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.uiTextPrimary)
+                        }
+                        .tint(Color.uiAccent)
+
+                        Text("Shows the active lecture in Dynamic Island and Lock Screen.")
+                            .font(.caption)
+                            .foregroundStyle(Color.uiTextMuted)
+                            .padding(.leading, 28)
+
+                        Divider()
+
+                        Toggle(isOn: $model.notificationsEnabled) {
+                            Label("Lecture reminders", systemImage: "bell.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.uiTextPrimary)
+                        }
+                        .tint(Color.uiAccent)
+
+                        if model.notificationsEnabled {
+                            Divider()
+
+                            Text("Notify me")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.uiTextSecondary)
+                                .padding(.top, 4)
+                                .padding(.bottom, 4)
+
+                            HStack(spacing: 8) {
+                                ForEach([15, 30, 60], id: \.self) { minutes in
+                                    Button {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                            model.notificationLeadMinutes = minutes
+                                        }
+                                    } label: {
+                                        Text(minutes == 60 ? "1h" : "\(minutes)m")
+                                            .font(.subheadline.weight(.semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 9)
+                                            .background(
+                                                model.notificationLeadMinutes == minutes
+                                                    ? Color.uiAccent
+                                                    : Color.uiSurfaceInput
+                                            )
+                                            .foregroundStyle(
+                                                model.notificationLeadMinutes == minutes ? Color.white : Color.uiTextSecondary
+                                            )
+                                    }
+                                    .buttonStyle(PressButtonStyle(scale: 0.94))
+                                    .accessibilityLabel("\(minutes) minutes before")
+                                    .accessibilityAddTraits(model.notificationLeadMinutes == minutes ? .isSelected : [])
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                            Text("before each lecture")
+                                .font(.caption)
+                                .foregroundStyle(Color.uiTextMuted)
+                                .padding(.top, 2)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.notificationsEnabled)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.liveActivitiesEnabled)
+
+                    Divider()
+
+                    Button {
+                        saveAndDismiss()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Done")
+                                .font(.headline.weight(.semibold))
+                            Spacer()
+                        }
+                        .padding(.vertical, 15)
+                        .foregroundStyle(.white)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(uiAccentGradient)
+                        )
+                    }
+                    .buttonStyle(PressButtonStyle(scale: 0.97))
+                    .padding(20)
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 16)
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
@@ -717,7 +1033,7 @@ struct ProfileView: View {
         }
     }
 
-    private var avatarCard: some View {
+    private var avatarSection: some View {
         VStack(spacing: 16) {
             PhotosPicker(selection: $photoPickerItem, matching: .images) {
                 avatarCircle
@@ -746,7 +1062,6 @@ struct ProfileView: View {
                 )
         }
         .frame(maxWidth: .infinity)
-        .liquidCard(cornerRadius: 24, tint: Color.uiSurfaceStrong)
     }
 
     @ViewBuilder
@@ -776,209 +1091,11 @@ struct ProfileView: View {
         }
     }
 
-    private var courseCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Programme")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.uiTextSecondary)
-                    Text(model.selectedCourse?.name ?? "No programme selected")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.uiTextPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer()
-
-                Button {
-                    showingCoursePicker = true
-                } label: {
-                    Text("Change")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.uiAccent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.uiAccent.opacity(0.12)))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Change programme")
-            }
-
-            Divider()
-
-            HStack(spacing: 8) {
-                Text(model.selectedAcademicYearLabel)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.uiTextSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.uiSurfaceInput))
-
-                Spacer()
-
-                HStack(spacing: 2) {
-                    ForEach(1...max(1, model.selectedCourseMaxYear), id: \.self) { year in
-                        Button {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                model.selectedCourseYear = year
-                            }
-                        } label: {
-                            Text("\(year)°")
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(
-                                    model.selectedCourseYear == year
-                                        ? RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.uiAccent)
-                                        : RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.clear)
-                                )
-                                .foregroundStyle(
-                                    model.selectedCourseYear == year ? Color.white : Color.uiTextSecondary
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Year \(year)")
-                        .accessibilityAddTraits(model.selectedCourseYear == year ? .isSelected : [])
-                    }
-                }
-                .padding(3)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.uiSurfaceInput)
-                )
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
-    }
-
-    private var workerCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Toggle(isOn: $model.isWorker) {
-                Label("Work shifts", systemImage: "briefcase.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.uiTextPrimary)
-            }
-            .tint(Color.uiAccent)
-
-            if model.isWorker {
-                Divider()
-                    .padding(.top, 14)
-
-                Text("Weekly shifts")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.uiTextSecondary)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                VStack(spacing: 0) {
-                    ForEach(model.workShifts.indices, id: \.self) { index in
-                        WorkShiftRow(shift: $model.workShifts[index])
-                        if index < model.workShifts.count - 1 {
-                            Divider()
-                        }
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.isWorker)
-    }
-
-    private var notificationsCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Toggle(isOn: $model.liveActivitiesEnabled) {
-                Label("Live Activity", systemImage: "circle.filled.pattern.diagonalline.rectangle")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.uiTextPrimary)
-            }
-            .tint(Color.uiAccent)
-
-            Text("Shows the active lecture in Dynamic Island and Lock Screen.")
-                .font(.caption)
-                .foregroundStyle(Color.uiTextMuted)
-                .padding(.top, 4)
-                .padding(.leading, 28)
-
-            Divider()
-                .padding(.vertical, 14)
-
-            Toggle(isOn: $model.notificationsEnabled) {
-                Label("Lecture reminders", systemImage: "bell.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.uiTextPrimary)
-            }
-            .tint(Color.uiAccent)
-
-            if model.notificationsEnabled {
-                Divider()
-                    .padding(.top, 14)
-
-                Text("Notify me")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.uiTextSecondary)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                HStack(spacing: 8) {
-                    ForEach([15, 30, 60], id: \.self) { minutes in
-                        Button {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                model.notificationLeadMinutes = minutes
-                            }
-                        } label: {
-                            Text(minutes == 60 ? "1h" : "\(minutes)m")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 9)
-                                .background(
-                                    model.notificationLeadMinutes == minutes
-                                        ? Color.uiAccent
-                                        : Color.uiSurfaceInput
-                                )
-                                .foregroundStyle(
-                                    model.notificationLeadMinutes == minutes ? Color.white : Color.uiTextSecondary
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(minutes) minutes before")
-                        .accessibilityAddTraits(model.notificationLeadMinutes == minutes ? .isSelected : [])
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                Text("before each lecture")
-                    .font(.caption)
-                    .foregroundStyle(Color.uiTextMuted)
-                    .padding(.top, 6)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidCard(cornerRadius: 20, tint: Color.uiSurfaceStrong)
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.notificationsEnabled)
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.liveActivitiesEnabled)
-    }
-
-    private var returnButton: some View {
-        Button {
-            saveAndDismiss()
-        } label: {
-            HStack {
-                Spacer()
-                Label("Back to timetable", systemImage: "calendar")
-                    .font(.headline.weight(.semibold))
-                Spacer()
-            }
-            .padding(.vertical, 15)
-            .foregroundStyle(Color.uiAccent)
-            .background(
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(Color.uiAccent.opacity(0.11))
-            )
-        }
-        .buttonStyle(.plain)
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(2)
+            .foregroundStyle(Color.uiTextMuted)
     }
 
     private func saveAndDismiss() {

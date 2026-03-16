@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>79787064-52C8-4656-A50F-F12A9C089348</key>
+		<key>179EFE00-EAEC-4E90-93CE-D147DA3D6F29</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>79787064-52C8-4656-A50F-F12A9C089348.xcactivitylog</string>
+			<string>179EFE00-EAEC-4E90-93CE-D147DA3D6F29.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -38,15 +38,15 @@
 			<key>schemeIdentifier-sharedScheme</key>
 			<integer>1</integer>
 			<key>signature</key>
-			<string>Cleaning project UniVROrari with scheme UniVROrari and configuration Release</string>
+			<string>Cleaning project UniVROrari with scheme UniVROrari and configuration Debug</string>
 			<key>timeStartedRecording</key>
-			<real>794261045.93720996</real>
+			<real>795351368.54940104</real>
 			<key>timeStoppedRecording</key>
-			<real>794261046.12150502</real>
+			<real>795351368.73458099</real>
 			<key>title</key>
-			<string>Cleaning project UniVROrari with scheme UniVROrari and configuration Release</string>
+			<string>Cleaning project UniVROrari with scheme UniVROrari and configuration Debug</string>
 			<key>uniqueIdentifier</key>
-			<string>79787064-52C8-4656-A50F-F12A9C089348</string>
+			<string>179EFE00-EAEC-4E90-93CE-D147DA3D6F29</string>
 		</dict>
 	</dict>
 </dict>
