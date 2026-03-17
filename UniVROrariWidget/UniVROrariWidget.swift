@@ -237,6 +237,13 @@ struct TimetableWidgetEntryView: View {
     var entry: TimetableEntry
     @Environment(\.widgetFamily) private var family
 
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEE d MMM"
+        return f
+    }()
+
     var body: some View {
         switch family {
         case .systemSmall:             smallView
@@ -467,10 +474,7 @@ struct TimetableWidgetEntryView: View {
     }
 
     private func shortDate() -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEE d MMM"
-        return f.string(from: Date())
+        Self.shortDateFormatter.string(from: Date())
     }
 }
 
