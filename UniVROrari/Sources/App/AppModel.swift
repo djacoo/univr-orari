@@ -200,6 +200,7 @@ final class AppModel: ObservableObject {
     @Published var lessonsError: String?
     @Published var buildingsError: String?
     @Published var roomsError: String?
+    @Published var scheduleDiff: ScheduleDiff?
 
     init(
         apiClient: UniVRAPIClient = UniVRAPIClient(),
@@ -453,6 +454,13 @@ final class AppModel: ObservableObject {
                 academicYear: selectedAcademicYear,
                 weekStart: weekStartDate
             )
+            let previousLessons = self.lessons
+            if !previousLessons.isEmpty {
+                let diff = ScheduleDiff.compute(old: previousLessons, new: fetchedLessons)
+                scheduleDiff = diff.isEmpty ? nil : diff
+            } else {
+                scheduleDiff = nil
+            }
             lessons = fetchedLessons
             isLoadingLessons = false
             localStore.saveLessonsCache(forKey: key, lessons: fetchedLessons)

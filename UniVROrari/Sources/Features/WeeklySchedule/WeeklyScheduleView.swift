@@ -102,6 +102,32 @@ struct WeeklyScheduleView: View {
                         .animation(.easeOut(duration: 0.2), value: model.isLoadingLessons)
                         .animation(.easeOut(duration: 0.2), value: model.lessonsError)
 
+                    if let diff = model.scheduleDiff {
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.uiAccent)
+                            Text("Schedule updated: \(diff.summary)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.uiTextSecondary)
+                            Spacer()
+                            Button {
+                                model.scheduleDiff = nil
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(Color.uiTextMuted)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.uiAccent.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
                     if viewMode == .list {
                         if !calendarDayDates.isEmpty {
                             ForEach(Array(calendarDayDates.enumerated()), id: \.element) { index, date in
