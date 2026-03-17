@@ -216,6 +216,7 @@ struct TimetableWidgetEntryView: View {
         switch family {
         case .systemSmall:             smallView
         case .systemMedium:            mediumView
+        case .systemLarge:             largeView
         case .accessoryCircular:       circularView
         case .accessoryRectangular:    rectangularView
         default:                       smallView
@@ -336,6 +337,79 @@ struct TimetableWidgetEntryView: View {
                 Spacer(minLength: 6)
                 VStack(alignment: .leading, spacing: 5) {
                     ForEach(entry.upcomingLessons.prefix(3)) { lesson in
+                        mediumRow(lesson: lesson)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 0) {
+                Button(intent: PreviousDayIntent()) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+
+                if offset != 0 {
+                    Button(intent: ResetDayIntent()) {
+                        Text("Today")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(widgetAccent)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 6)
+                }
+
+                Spacer()
+
+                Button(intent: NextDayIntent()) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    // MARK: Large — full day schedule with navigation
+
+    private var largeView: some View {
+        let offset = WidgetDayOffset.current
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(widgetAccent)
+                Text(offset == 0 ? "Today's Schedule" : shortDate(from: entry.targetDate))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(widgetAccent)
+                Spacer()
+                Text(offset == 0 ? shortDate() : shortDate(from: entry.targetDate))
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
+
+            if entry.upcomingLessons.isEmpty {
+                Spacer()
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(widgetGreen)
+                    Text(offset == 0 ? "No more lectures today" : "No lectures this day")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                Spacer()
+            } else {
+                Spacer(minLength: 10)
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(entry.upcomingLessons) { lesson in
                         mediumRow(lesson: lesson)
                     }
                 }
@@ -690,6 +764,7 @@ struct UniVROrariWidget: Widget {
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
+            .systemLarge,
             .accessoryCircular,
             .accessoryRectangular,
         ])
