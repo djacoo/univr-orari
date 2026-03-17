@@ -13,10 +13,16 @@ struct WeeklyScheduleView: View {
     @State private var showingSubjectFilter = false
     @State private var selectedLesson: Lesson?
     @State private var exportURL: IdentifiableURL?
+    @State private var shareImage: IdentifiableImage?
 
     struct IdentifiableURL: Identifiable {
         let id = UUID()
         let url: URL
+    }
+
+    struct IdentifiableImage: Identifiable {
+        let id = UUID()
+        let image: UIImage
     }
 
     var body: some View {
@@ -39,6 +45,9 @@ struct WeeklyScheduleView: View {
             .sheet(item: $selectedLesson) { lesson in LessonDetailSheet(lesson: lesson) }
             .sheet(item: $exportURL) { item in
                 ActivityViewControllerWrapper(activityItems: [item.url])
+            }
+            .sheet(item: $shareImage) { item in
+                ActivityViewControllerWrapper(activityItems: [item.image])
             }
             .navigationTitle("Timetable")
             .navigationBarTitleDisplayMode(.inline)
@@ -259,6 +268,19 @@ struct WeeklyScheduleView: View {
             }
             .buttonStyle(PressButtonStyle(scale: 0.97))
             .accessibilityLabel("Jump to current week")
+            .contextMenu {
+                Button {
+                    if let image = ScheduleImageRenderer.render(
+                        weekLabel: weekRangeLabel,
+                        courseName: model.selectedCourse?.name ?? "UniVR",
+                        days: model.lessonsGroupedByDay
+                    ) {
+                        shareImage = IdentifiableImage(image: image)
+                    }
+                } label: {
+                    Label("Share as image", systemImage: "photo")
+                }
+            }
 
             Spacer()
 
