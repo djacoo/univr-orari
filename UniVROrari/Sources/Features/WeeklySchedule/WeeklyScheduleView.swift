@@ -408,7 +408,7 @@ struct WeeklyScheduleView: View {
             .padding(.top, 12)
             .transition(.opacity)
         } else if model.lessons.isEmpty {
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 Image(systemName: "calendar.badge.checkmark")
                     .font(.system(size: 36))
                     .foregroundStyle(Color.uiTextMuted)
@@ -416,9 +416,21 @@ struct WeeklyScheduleView: View {
                 Text("No lectures this week")
                     .font(.headline)
                     .foregroundStyle(Color.uiTextPrimary)
-                Text("Try a different week or update your profile.")
+                Text("There are no scheduled lectures for this period.")
                     .font(.subheadline)
                     .foregroundStyle(Color.uiTextSecondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                        model.jumpToToday()
+                    }
+                } label: {
+                    Label("Jump to today", systemImage: "arrow.uturn.backward")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.uiAccent)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 60)
