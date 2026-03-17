@@ -20,6 +20,9 @@ struct DayCardView: View {
     var onLessonTap: (Lesson) -> Void = { _ in }
 
     @EnvironmentObject private var attendanceStore: AttendanceStore
+    @EnvironmentObject private var lessonNotesStore: LessonNotesStore
+
+    @State private var noteLesson: Lesson?
 
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
 
@@ -29,6 +32,9 @@ struct DayCardView: View {
             cardBody
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(item: $noteLesson) { lesson in
+            LessonNoteSheet(lesson: lesson, store: lessonNotesStore)
+        }
     }
 
     @ViewBuilder
@@ -83,14 +89,26 @@ struct DayCardView: View {
                     if idx > 0 {
                         Rectangle().fill(Color.uiStroke).frame(height: 0.5).padding(.horizontal, 20)
                     }
+                    let lesson = dayLessons[idx]
                     LessonCard(
-                        lesson: dayLessons[idx],
+                        lesson: lesson,
                         isActive: false,
-                        attendanceStatus: attendanceStore.status(for: dayLessons[idx].id, date: dayLessons[idx].date),
-                        onTap: { onLessonTap(dayLessons[idx]) },
-                        onAttendanceTap: { _ = attendanceStore.toggle(for: dayLessons[idx].id, date: dayLessons[idx].date) }
+                        hasNote: lessonNotesStore.hasNote(for: lesson.id, date: lesson.date),
+                        attendanceStatus: attendanceStore.status(for: lesson.id, date: lesson.date),
+                        onTap: { onLessonTap(lesson) },
+                        onAttendanceTap: { _ = attendanceStore.toggle(for: lesson.id, date: lesson.date) }
                     )
                     .padding(.horizontal, 20)
+                    .contextMenu {
+                        Button {
+                            noteLesson = lesson
+                        } label: {
+                            Label(
+                                lessonNotesStore.hasNote(for: lesson.id, date: lesson.date) ? "Edit Note" : "Add Note",
+                                systemImage: "note.text"
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -114,11 +132,22 @@ struct DayCardView: View {
             LessonCard(
                 lesson: lesson,
                 isActive: isActive(lesson),
+                hasNote: lessonNotesStore.hasNote(for: lesson.id, date: lesson.date),
                 attendanceStatus: attendanceStore.status(for: lesson.id, date: lesson.date),
                 onTap: { onLessonTap(lesson) },
                 onAttendanceTap: { _ = attendanceStore.toggle(for: lesson.id, date: lesson.date) }
             )
             .padding(.horizontal, 20)
+            .contextMenu {
+                Button {
+                    noteLesson = lesson
+                } label: {
+                    Label(
+                        lessonNotesStore.hasNote(for: lesson.id, date: lesson.date) ? "Edit Note" : "Add Note",
+                        systemImage: "note.text"
+                    )
+                }
+            }
         }
         if insertIdx == dayLessons.count {
             NowIndicatorView(label: nowLabel).padding(.horizontal, 20)
