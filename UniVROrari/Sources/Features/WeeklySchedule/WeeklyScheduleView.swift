@@ -21,8 +21,16 @@ private let subjectColorPalette: [Color] = [
     Color(hex: "06B6D4"),
 ]
 
+private func stableHash(_ string: String) -> Int {
+    var hash: UInt64 = 5381
+    for byte in string.utf8 {
+        hash = ((hash &<< 5) &+ hash) &+ UInt64(byte)
+    }
+    return Int(hash & 0x7FFFFFFFFFFFFFFF)
+}
+
 private func subjectColor(for title: String) -> Color {
-    subjectColorPalette[abs(title.hashValue) % subjectColorPalette.count]
+    subjectColorPalette[stableHash(title) % subjectColorPalette.count]
 }
 
 // MARK: - WeeklyScheduleView
