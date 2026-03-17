@@ -1,71 +1,65 @@
+import AppIntents
 import WidgetKit
 import SwiftUI
 import ActivityKit
 
-private let appGroupSuite = "group.it.univr.orari"
+private typealias WidgetLesson = SharedCacheReader.CachedLesson
 
-// MARK: - Lightweight mirror types (must stay in sync with main app Codable models)
+// MARK: - Day Offset
 
-fileprivate struct WidgetLesson: Codable, Identifiable {
-    let id: String
-    let title: String
-    let professor: String
-    let room: String
-    let building: String
-    let date: Date
-    let startTime: String
-    let endTime: String
-}
+private enum WidgetDayOffset {
+    private static let key = "widget.dayOffset"
+    private static let defaults = UserDefaults(suiteName: "group.it.univr.orari")
 
-fileprivate struct WidgetLessonsCacheEntry: Codable {
-    let key: String
-    let savedAt: Date
-    let lessons: [WidgetLesson]
-}
-
-fileprivate struct WidgetPreferences: Codable {
-    var selectedCourseID: String?
-    var selectedCourseYear: Int
-    var selectedAcademicYear: Int?
-    var hiddenSubjects: [String]?
-}
-
-// MARK: - Live Activity attributes (must stay in sync with LectureActivityAttributes in AppModel)
-
-struct LectureActivityAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        enum Phase: String, Codable, Hashable {
-            case live, upcoming, idle, allDone
-        }
-        let phase: Phase
-        let lessonTitle: String
-        let room: String
-        let startTime: String
-        let endTime: String
-        let startDate: Date
-        let endDate: Date
-        let isDarkMode: Bool
+    static var current: Int {
+        defaults?.integer(forKey: key) ?? 0
     }
-    let courseName: String
+
+    static func set(_ offset: Int) {
+        defaults?.set(offset, forKey: key)
+    }
+
+    static func reset() {
+        defaults?.removeObject(forKey: key)
+    }
+}
+
+// MARK: - AppIntents
+
+struct NextDayIntent: AppIntent {
+    static var title: LocalizedStringResource = "Next Day"
+    static var description = IntentDescription("Show next day's schedule")
+
+    func perform() async throws -> some IntentResult {
+        WidgetDayOffset.set(WidgetDayOffset.current + 1)
+        WidgetCenter.shared.reloadTimelines(ofKind: "UniVROrariWidget")
+        return .result()
+    }
+}
+
+struct PreviousDayIntent: AppIntent {
+    static var title: LocalizedStringResource = "Previous Day"
+    static var description = IntentDescription("Show previous day's schedule")
+
+    func perform() async throws -> some IntentResult {
+        WidgetDayOffset.set(WidgetDayOffset.current - 1)
+        WidgetCenter.shared.reloadTimelines(ofKind: "UniVROrariWidget")
+        return .result()
+    }
+}
+
+struct ResetDayIntent: AppIntent {
+    static var title: LocalizedStringResource = "Today"
+    static var description = IntentDescription("Reset to today's schedule")
+
+    func perform() async throws -> some IntentResult {
+        WidgetDayOffset.reset()
+        WidgetCenter.shared.reloadTimelines(ofKind: "UniVROrariWidget")
+        return .result()
+    }
 }
 
 // MARK: - Helpers
-
-private func italianMonday(for date: Date) -> Date {
-    var cal = Calendar(identifier: .gregorian)
-    cal.firstWeekday = 2
-    let weekday = cal.component(.weekday, from: date)
-    let delta = weekday == 1 ? -6 : (2 - weekday)
-    return cal.date(byAdding: .day, value: delta, to: cal.startOfDay(for: date)) ?? date
-}
-
-private func currentAcademicYear() -> Int {
-    var cal = Calendar(identifier: .gregorian)
-    cal.locale = Locale(identifier: "it_IT")
-    let month = cal.component(.month, from: Date())
-    let year  = cal.component(.year, from: Date())
-    return month >= 8 ? year : (year - 1)
-}
 
 private func minutesSinceMidnight(_ time: String) -> Int {
     let parts = time.split(separator: ":").compactMap { Int($0) }
@@ -73,41 +67,11 @@ private func minutesSinceMidnight(_ time: String) -> Int {
     return parts[0] * 60 + parts[1]
 }
 
-private func loadTodayLessons() -> [WidgetLesson] {
-    guard let defaults = UserDefaults(suiteName: appGroupSuite) else { return [] }
-    let decoder = JSONDecoder()
-
-    guard
-        let prefData = defaults.data(forKey: "univr.preferences"),
-        let prefs = try? decoder.decode(WidgetPreferences.self, from: prefData),
-        let courseID = prefs.selectedCourseID
-    else { return [] }
-
-    let hiddenSubjects = Set(prefs.hiddenSubjects ?? [])
-    let academicYear = prefs.selectedAcademicYear ?? currentAcademicYear()
-    let weekStart = italianMonday(for: Date())
-    let fmt = DateFormatter()
-    fmt.locale = Locale(identifier: "en_US_POSIX")
-    fmt.dateFormat = "yyyy-MM-dd"
-    fmt.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-    let weekStartStr = fmt.string(from: weekStart)
-    let key = "lessons:\(courseID):\(prefs.selectedCourseYear):\(academicYear):\(weekStartStr)"
-
-    guard
-        let cacheData = defaults.data(forKey: "univr.cache.lessons"),
-        let entries = try? decoder.decode([WidgetLessonsCacheEntry].self, from: cacheData),
-        let entry = entries.first(where: { $0.key == key })
-    else { return [] }
-
-    let today = entry.lessons.filter { Calendar.current.isDateInToday($0.date) }
-    if hiddenSubjects.isEmpty { return today }
-    return today.filter { !hiddenSubjects.contains($0.title) }
-}
-
 // MARK: - Timeline Entry
 
 struct TimetableEntry: TimelineEntry {
     let date: Date
+    let targetDate: Date
     fileprivate let nextLesson: WidgetLesson?
     fileprivate let upcomingLessons: [WidgetLesson]
     let isNow: Bool
@@ -118,7 +82,7 @@ struct TimetableEntry: TimelineEntry {
 
 struct TimetableProvider: TimelineProvider {
     func placeholder(in context: Context) -> TimetableEntry {
-        TimetableEntry(date: Date(), nextLesson: nil, upcomingLessons: [], isNow: false, minutesToNext: nil)
+        TimetableEntry(date: Date(), targetDate: Date(), nextLesson: nil, upcomingLessons: [], isNow: false, minutesToNext: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (TimetableEntry) -> Void) {
@@ -144,26 +108,30 @@ struct TimetableProvider: TimelineProvider {
     }
 
     private func makeEntry() -> TimetableEntry {
-        let lessons = loadTodayLessons()
-        let cal = Calendar.current
         let now = Date()
+        let cal = Calendar.current
+        let targetDate = cal.date(byAdding: .day, value: WidgetDayOffset.current, to: now) ?? now
+        let lessons = SharedCacheReader.lessons(for: targetDate)
         let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        let isTargetToday = cal.isDateInToday(targetDate)
         var nextLesson: WidgetLesson?
         var isNow = false
         var minutesToNext: Int?
         for lesson in lessons {
             let start = minutesSinceMidnight(lesson.startTime)
             let end   = minutesSinceMidnight(lesson.endTime)
-            if currentMins >= start && currentMins < end {
+            if isTargetToday && currentMins >= start && currentMins < end {
                 nextLesson = lesson; isNow = true; break
             }
-            if start > currentMins && nextLesson == nil {
+            if start > (isTargetToday ? currentMins : -1) && nextLesson == nil {
                 nextLesson = lesson
-                minutesToNext = start - currentMins
+                if isTargetToday { minutesToNext = start - currentMins }
             }
         }
-        let upcoming = lessons.filter { minutesSinceMidnight($0.endTime) > currentMins }
-        return TimetableEntry(date: now, nextLesson: nextLesson, upcomingLessons: upcoming, isNow: isNow, minutesToNext: minutesToNext)
+        let upcoming = isTargetToday
+            ? lessons.filter { minutesSinceMidnight($0.endTime) > currentMins }
+            : lessons
+        return TimetableEntry(date: now, targetDate: targetDate, nextLesson: nextLesson, upcomingLessons: upcoming, isNow: isNow, minutesToNext: minutesToNext)
     }
 }
 
@@ -237,10 +205,18 @@ struct TimetableWidgetEntryView: View {
     var entry: TimetableEntry
     @Environment(\.widgetFamily) private var family
 
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US")
+        f.dateFormat = "EEE d MMM"
+        return f
+    }()
+
     var body: some View {
         switch family {
         case .systemSmall:             smallView
         case .systemMedium:            mediumView
+        case .systemLarge:             largeView
         case .accessoryCircular:       circularView
         case .accessoryRectangular:    rectangularView
         default:                       smallView
@@ -332,16 +308,17 @@ struct TimetableWidgetEntryView: View {
     // MARK: Medium — today's schedule at a glance
 
     private var mediumView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let offset = WidgetDayOffset.current
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
                 Image(systemName: "graduationcap.fill")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(widgetAccent)
-                Text("Today")
+                Text(offset == 0 ? "Today" : shortDate(from: entry.targetDate))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(widgetAccent)
                 Spacer()
-                Text(shortDate())
+                Text(offset == 0 ? shortDate() : shortDate(from: entry.targetDate))
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
             }
@@ -351,7 +328,7 @@ struct TimetableWidgetEntryView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(widgetGreen)
-                    Text("No more lectures today")
+                    Text(offset == 0 ? "No more lectures today" : "No lectures this day")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -365,6 +342,108 @@ struct TimetableWidgetEntryView: View {
                 }
                 Spacer(minLength: 0)
             }
+
+            HStack(spacing: 0) {
+                Button(intent: PreviousDayIntent()) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+
+                if offset != 0 {
+                    Button(intent: ResetDayIntent()) {
+                        Text("Today")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(widgetAccent)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 6)
+                }
+
+                Spacer()
+
+                Button(intent: NextDayIntent()) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+
+    // MARK: Large — full day schedule with navigation
+
+    private var largeView: some View {
+        let offset = WidgetDayOffset.current
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: "graduationcap.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(widgetAccent)
+                Text(offset == 0 ? "Today's Schedule" : shortDate(from: entry.targetDate))
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(widgetAccent)
+                Spacer()
+                Text(offset == 0 ? shortDate() : shortDate(from: entry.targetDate))
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
+
+            if entry.upcomingLessons.isEmpty {
+                Spacer()
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(widgetGreen)
+                    Text(offset == 0 ? "No more lectures today" : "No lectures this day")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                Spacer()
+            } else {
+                Spacer(minLength: 10)
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(entry.upcomingLessons) { lesson in
+                        mediumRow(lesson: lesson)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 0) {
+                Button(intent: PreviousDayIntent()) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+
+                if offset != 0 {
+                    Button(intent: ResetDayIntent()) {
+                        Text("Today")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(widgetAccent)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 6)
+                }
+
+                Spacer()
+
+                Button(intent: NextDayIntent()) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(widgetAccent)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 6)
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -466,11 +545,8 @@ struct TimetableWidgetEntryView: View {
         .containerBackground(.fill.tertiary, for: .widget)
     }
 
-    private func shortDate() -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.dateFormat = "EEE d MMM"
-        return f.string(from: Date())
+    private func shortDate(from date: Date = Date()) -> String {
+        Self.shortDateFormatter.string(from: date)
     }
 }
 
@@ -688,6 +764,7 @@ struct UniVROrariWidget: Widget {
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
+            .systemLarge,
             .accessoryCircular,
             .accessoryRectangular,
         ])

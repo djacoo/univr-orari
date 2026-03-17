@@ -3,38 +3,22 @@ import Combine
 import UIKit
 import UserNotifications
 import ActivityKit
-import CoreSpotlight
-import UniformTypeIdentifiers
 
 enum ShortcutAction {
     case openTimetable
     case findFreeRoom
 }
 
-struct LectureActivityAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        enum Phase: String, Codable, Hashable {
-            case live       // lesson in progress
-            case upcoming   // starts within lead-time window
-            case idle       // gap between lessons, next lesson later today
-            case allDone    // no more lessons today
-        }
-        let phase: Phase
-        let lessonTitle: String
-        let room: String
-        let startTime: String
-        let endTime: String
-        let startDate: Date   // lesson start (or next lesson start for idle/upcoming)
-        let endDate: Date     // lesson end
-        let isDarkMode: Bool
-    }
-    let courseName: String
-}
 
 @MainActor
 final class AppModel: ObservableObject {
     private let apiClient: UniVRAPIClient
     private let localStore: LocalDataStore
+    private let preferencesManager: PreferencesManager
+    private let notificationScheduler = NotificationScheduler()
+    private let liveActivityManager = LiveActivityManager()
+    private let networkMonitor = NetworkMonitor()
+    private var networkObservation: AnyCancellable?
 
     private var preferredCourseID: String?
     private var preferredBuildingID: String?
@@ -56,7 +40,7 @@ final class AppModel: ObservableObject {
                 weekStartDate = defaultWeekStart(forAcademicYear: selectedAcademicYear)
             }
 
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -68,7 +52,7 @@ final class AppModel: ObservableObject {
                 return
             }
             guard !_isApplyingCourseChange else { return }
-            persistPreferences()
+            schedulePersist()
             loadSubjectFilter()
         }
     }
@@ -86,7 +70,7 @@ final class AppModel: ObservableObject {
 
     @Published var hasCompletedInitialSetup = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -101,7 +85,7 @@ final class AppModel: ObservableObject {
             _isApplyingCourseChange = false
             lessons = []
             lessonsError = nil
-            persistPreferences()
+            schedulePersist()
             loadSubjectFilter()
         }
     }
@@ -123,8 +107,9 @@ final class AppModel: ObservableObject {
         didSet {
             guard !_isLoadingSubjectFilter else { return }
             lessonsGroupedByDay = Self.groupLessons(lessons, excluding: hiddenSubjects)
+            notificationScheduler.hiddenSubjects = hiddenSubjects
             saveSubjectFilter()
-            persistPreferences()
+            schedulePersist()
         }
     }
     private var _isLoadingSubjectFilter = false
@@ -134,7 +119,7 @@ final class AppModel: ObservableObject {
     @Published var selectedBuilding: Building? {
         didSet {
             preferredBuildingID = selectedBuilding?.id
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -148,19 +133,23 @@ final class AppModel: ObservableObject {
     @Published private(set) var allRoomNames: [String] = []
 
     @Published var username: String = "" {
-        didSet { persistPreferences() }
+        didSet { schedulePersist() }
     }
     @Published var profileImage: UIImage?
 
     @Published var isWorker: Bool = false {
-        didSet { persistPreferences() }
+        didSet { schedulePersist() }
     }
 
     @Published var notificationsEnabled: Bool = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
+            notificationScheduler.notificationsEnabled = notificationsEnabled
             if notificationsEnabled {
-                Task { await requestNotificationPermission() }
+                Task {
+                    await notificationScheduler.requestPermission()
+                    notificationScheduler.schedule(for: lessons)
+                }
             } else {
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
             }
@@ -168,19 +157,21 @@ final class AppModel: ObservableObject {
     }
     @Published var notificationLeadMinutes: Int = 15 {
         didSet {
-            persistPreferences()
-            if notificationsEnabled { scheduleNotifications(for: lessons) }
-            if liveActivitiesEnabled { refreshLiveActivity() }
+            schedulePersist()
+            notificationScheduler.notificationLeadMinutes = notificationLeadMinutes
+            liveActivityManager.notificationLeadMinutes = notificationLeadMinutes
+            if notificationsEnabled { notificationScheduler.schedule(for: lessons) }
+            if liveActivitiesEnabled { liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "") }
         }
     }
 
     @Published var liveActivitiesEnabled: Bool = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
             if liveActivitiesEnabled {
-                refreshLiveActivity()
+                liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "")
             } else {
-                endLectureActivity()
+                liveActivityManager.end()
             }
         }
     }
@@ -189,9 +180,6 @@ final class AppModel: ObservableObject {
     }
 
     @Published var pendingShortcutAction: ShortcutAction?
-
-    private var lectureActivity: Activity<LectureActivityAttributes>?
-    private var liveActivityTimerTask: Task<Void, Never>?
 
     private static let profileImageURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -214,6 +202,7 @@ final class AppModel: ObservableObject {
     @Published var lessonsError: String?
     @Published var buildingsError: String?
     @Published var roomsError: String?
+    @Published var scheduleDiff: ScheduleDiff?
 
     init(
         apiClient: UniVRAPIClient = UniVRAPIClient(),
@@ -221,8 +210,9 @@ final class AppModel: ObservableObject {
     ) {
         self.apiClient = apiClient
         self.localStore = localStore
+        self.preferencesManager = PreferencesManager(localStore: localStore)
 
-        let storedPreferences = localStore.loadPreferences()
+        let storedPreferences = preferencesManager.loadPreferences()
 
         selectedCourseYear = min(max(storedPreferences.selectedCourseYear, 1), 5)
         selectedAcademicYear = storedPreferences.selectedAcademicYear ?? defaultAcademicYear
@@ -267,14 +257,28 @@ final class AppModel: ObservableObject {
                 let isDark = UIApplication.shared.connectedScenes
                     .compactMap { $0 as? UIWindowScene }
                     .first?.traitCollection.userInterfaceStyle == .dark
-                self.refreshLiveActivity(isDark: isDark)
+                self.liveActivityManager.refresh(lessonsGroupedByDay: self.lessonsGroupedByDay, courseName: self.selectedCourse?.name ?? "", isDark: isDark)
             }
         }
+
+        networkObservation = networkMonitor.$isConnected
+            .removeDuplicates()
+            .dropFirst()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self, self.hasCompletedInitialSetup else { return }
+                    if self.lessonsError != nil { await self.refreshLessons() }
+                    if self.roomsError != nil { await self.refreshRooms() }
+                }
+            }
     }
 
     var requiresInitialSetup: Bool {
         !hasCompletedInitialSetup || selectedCourse == nil
     }
+
+    var isNetworkConnected: Bool { networkMonitor.isConnected }
 
     var availableAcademicYears: [Int] {
         let current = DateHelpers.currentAcademicYear()
@@ -466,16 +470,24 @@ final class AppModel: ObservableObject {
                 academicYear: selectedAcademicYear,
                 weekStart: weekStartDate
             )
+            let previousLessons = self.lessons
+            if !previousLessons.isEmpty {
+                let diff = ScheduleDiff.compute(old: previousLessons, new: fetchedLessons)
+                scheduleDiff = diff.isEmpty ? nil : diff
+            } else {
+                scheduleDiff = nil
+            }
             lessons = fetchedLessons
             isLoadingLessons = false
             localStore.saveLessonsCache(forKey: key, lessons: fetchedLessons)
             if #available(iOS 26.0, *) {
-                Task { await scheduleNotificationsWithAI(for: fetchedLessons) }
+                Task { await notificationScheduler.scheduleWithAI(for: fetchedLessons) }
             } else {
-                scheduleNotifications(for: fetchedLessons)
+                notificationScheduler.schedule(for: fetchedLessons)
             }
-            indexLessonsForSpotlight(fetchedLessons)
-            refreshLiveActivity()
+            SpotlightIndexer.indexLessons(fetchedLessons)
+            liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "")
+            prefetchAdjacentWeeks()
         } catch {
             if Self.isCancelledError(error) { return }
             isLoadingLessons = false
@@ -483,6 +495,40 @@ final class AppModel: ObservableObject {
                 lessonsError = "No connection — showing offline schedule as of \(Self.cacheDateFormatter.string(from: cached.savedAt))."
             } else {
                 lessonsError = error.localizedDescription
+            }
+        }
+    }
+
+    private func prefetchAdjacentWeeks() {
+        guard let selectedCourse else { return }
+        let courseID = selectedCourse.id
+        let year = selectedCourseYear
+        let academicYear = selectedAcademicYear
+        let current = weekStartDate
+        let bounds = _weekBounds
+
+        for offset in [-1, 1] {
+            let adjacentWeek = DateHelpers.addWeeks(offset, to: current)
+            guard adjacentWeek >= bounds.start && adjacentWeek <= bounds.end else { continue }
+
+            let key = lessonsCacheKey(
+                courseID: courseID,
+                courseYear: year,
+                academicYear: academicYear,
+                weekStart: adjacentWeek
+            )
+            guard localStore.loadLessonsCache(forKey: key) == nil else { continue }
+
+            let client = apiClient
+            let store = localStore
+            Task.detached(priority: .utility) {
+                guard let lessons = try? await client.fetchWeeklyLessons(
+                    courseID: courseID,
+                    courseYear: year,
+                    academicYear: academicYear,
+                    weekStart: adjacentWeek
+                ) else { return }
+                store.saveLessonsCache(forKey: key, lessons: lessons)
             }
         }
     }
@@ -540,159 +586,7 @@ final class AppModel: ObservableObject {
         weekStartDate = DateHelpers.monday(for: date)
     }
 
-    func refreshLiveActivity(isDark: Bool? = nil) {
-        guard liveActivitiesEnabled else { return }
-        if lectureActivity == nil {
-            lectureActivity = Activity<LectureActivityAttributes>.activities.first
-        }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-        let cal = Calendar.current
-        let now = Date()
-        guard cal.isDateInToday(now) else { endLectureActivity(); return }
-
-        let dark = isDark ?? (UIScreen.main.traitCollection.userInterfaceStyle == .dark)
-        let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
-        let todayLessons = lessonsGroupedByDay.first(where: { cal.isDateInToday($0.date) })?.lessons ?? []
-        let state = computeActivityState(now: now, currentMins: currentMins, todayLessons: todayLessons, isDark: dark)
-
-        if let activity = lectureActivity {
-            Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
-        } else {
-            let attrs = LectureActivityAttributes(courseName: selectedCourse?.name ?? "")
-            lectureActivity = try? Activity<LectureActivityAttributes>.request(
-                attributes: attrs,
-                content: ActivityContent(state: state, staleDate: nil)
-            )
-        }
-        scheduleLiveActivityTimer(todayLessons: todayLessons, currentMins: currentMins)
-    }
-
-    private func computeActivityState(
-        now: Date,
-        currentMins: Int,
-        todayLessons: [Lesson],
-        isDark: Bool
-    ) -> LectureActivityAttributes.ContentState {
-        var romeCal = Calendar(identifier: .gregorian)
-        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-
-        // 1. Lesson currently live
-        if let lesson = todayLessons.first(where: {
-            $0.startTime.minutesSinceMidnight <= currentMins && currentMins < $0.endTime.minutesSinceMidnight
-        }) {
-            return makeActivityState(phase: .live, lesson: lesson, romeCal: romeCal, now: now, isDark: isDark)
-        }
-
-        // 2. Upcoming within lead-time window
-        if let lesson = todayLessons.first(where: {
-            let s = $0.startTime.minutesSinceMidnight
-            return s > currentMins && s - currentMins <= notificationLeadMinutes
-        }) {
-            return makeActivityState(phase: .upcoming, lesson: lesson, romeCal: romeCal, now: now, isDark: isDark)
-        }
-
-        // 3. Later lesson exists today — show idle countdown
-        if let lesson = todayLessons.first(where: { $0.startTime.minutesSinceMidnight > currentMins }) {
-            return makeActivityState(phase: .idle, lesson: lesson, romeCal: romeCal, now: now, isDark: isDark)
-        }
-
-        // 4. Nothing left today
-        return LectureActivityAttributes.ContentState(
-            phase: .allDone,
-            lessonTitle: "", room: "", startTime: "", endTime: "",
-            startDate: now, endDate: now,
-            isDarkMode: isDark
-        )
-    }
-
-    private func makeActivityState(
-        phase: LectureActivityAttributes.ContentState.Phase,
-        lesson: Lesson,
-        romeCal: Calendar,
-        now: Date,
-        isDark: Bool
-    ) -> LectureActivityAttributes.ContentState {
-        let startMins = lesson.startTime.minutesSinceMidnight
-        var startComps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
-        startComps.hour = startMins / 60; startComps.minute = startMins % 60
-        startComps.timeZone = romeCal.timeZone
-        let startDate = romeCal.date(from: startComps) ?? now
-
-        let endMins = lesson.endTime.minutesSinceMidnight
-        var endComps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
-        endComps.hour = endMins / 60; endComps.minute = endMins % 60
-        endComps.timeZone = romeCal.timeZone
-        let endDate = romeCal.date(from: endComps) ?? now.addingTimeInterval(3600)
-
-        return LectureActivityAttributes.ContentState(
-            phase: phase,
-            lessonTitle: lesson.title,
-            room: lesson.room,
-            startTime: lesson.startTime,
-            endTime: lesson.endTime,
-            startDate: startDate,
-            endDate: endDate,
-            isDarkMode: isDark
-        )
-    }
-
-    private func scheduleLiveActivityTimer(todayLessons: [Lesson], currentMins: Int) {
-        liveActivityTimerTask?.cancel()
-        guard liveActivitiesEnabled else { return }
-
-        var romeCal = Calendar(identifier: .gregorian)
-        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-        let now = Date()
-        var transitionDates: [Date] = []
-
-        for lesson in todayLessons {
-            let startMins = lesson.startTime.minutesSinceMidnight
-            let endMins   = lesson.endTime.minutesSinceMidnight
-            let leadMins  = startMins - notificationLeadMinutes
-
-            for mins in [leadMins, startMins, endMins] where mins > currentMins {
-                var comps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
-                comps.hour = mins / 60; comps.minute = mins % 60; comps.second = 1
-                comps.timeZone = romeCal.timeZone
-                if let d = romeCal.date(from: comps), d > now { transitionDates.append(d) }
-            }
-        }
-
-        guard let next = transitionDates.min() else { return }
-        let delay = max(next.timeIntervalSinceNow, 1)
-
-        liveActivityTimerTask = Task { @MainActor [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                self?.refreshLiveActivity()
-            } catch {}
-        }
-    }
-
-    func endLectureActivity() {
-        liveActivityTimerTask?.cancel()
-        liveActivityTimerTask = nil
-        guard let activity = lectureActivity else { return }
-        lectureActivity = nil
-        Task { await activity.end(ActivityContent(state: activity.content.state, staleDate: nil), dismissalPolicy: .immediate) }
-    }
-
-    private func indexLessonsForSpotlight(_ lessons: [Lesson]) {
-        let fmt = DateHelpers.apiDateFormatter
-        let items: [CSSearchableItem] = lessons.map { lesson in
-            let attrs = CSSearchableItemAttributeSet(contentType: UTType.plainText)
-            attrs.title = lesson.title
-            let parts = ["\(lesson.startTime)–\(lesson.endTime)", lesson.room, lesson.professor]
-                .filter { !$0.isEmpty }
-            attrs.contentDescription = parts.joined(separator: " · ")
-            attrs.keywords = [lesson.title, lesson.professor, lesson.room, lesson.building]
-                .filter { !$0.isEmpty }
-            let id = "univr.lesson:\(lesson.id):\(fmt.string(from: lesson.date))"
-            return CSSearchableItem(uniqueIdentifier: id, domainIdentifier: "it.univr.orari.lessons", attributeSet: attrs)
-        }
-        CSSearchableIndex.default().indexSearchableItems(items) { _ in }
-    }
 
     func completeInitialSetup(course: StudyCourse, academicYear: Int) async {
         selectedCourse = course
@@ -743,126 +637,23 @@ final class AppModel: ObservableObject {
         selectedBuilding = buildings.first
     }
 
-    func requestNotificationPermission() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        if settings.authorizationStatus == .notDetermined {
-            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
-        }
-        if notificationsEnabled { scheduleNotifications(for: lessons) }
-    }
-
-    func scheduleNotifications(for lessons: [Lesson]) {
-        guard notificationsEnabled else { return }
-        let center = UNUserNotificationCenter.current()
-        center.removeAllPendingNotificationRequests()
-        var romeCal = Calendar(identifier: .gregorian)
-        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-        let now = Date()
-        let visibleLessons = hiddenSubjects.isEmpty ? lessons : lessons.filter { !hiddenSubjects.contains($0.title) }
-        for lesson in visibleLessons {
-            let startMins = lesson.startTime.minutesSinceMidnight - notificationLeadMinutes
-            guard startMins >= 0 else { continue }
-            let dayComps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
-            var fireComps = DateComponents()
-            fireComps.timeZone = romeCal.timeZone
-            fireComps.year    = dayComps.year
-            fireComps.month   = dayComps.month
-            fireComps.day     = dayComps.day
-            fireComps.hour    = startMins / 60
-            fireComps.minute  = startMins % 60
-            guard let fireDate = romeCal.date(from: fireComps), fireDate > now else { continue }
-            let content = UNMutableNotificationContent()
-            content.title = lesson.title
-            let bodyParts = [lesson.startTime, lesson.room, lesson.professor].filter { !$0.isEmpty }
-            content.body = bodyParts.joined(separator: " · ")
-            content.sound = .default
-            content.interruptionLevel = .timeSensitive
-            let trigger = UNCalendarNotificationTrigger(dateMatching: fireComps, repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "lesson:\(lesson.id):\(notificationLeadMinutes)",
-                content: content,
-                trigger: trigger
+    private func schedulePersist() {
+        preferencesManager.schedulePersist { [weak self] in
+            guard let self else { return .default }
+            return StoredPreferences(
+                selectedCourseID: self.selectedCourse?.id,
+                selectedCourseYear: self.selectedCourseYear,
+                selectedBuildingID: self.selectedBuilding?.id,
+                selectedAcademicYear: self.selectedAcademicYear,
+                hasCompletedInitialSetup: self.hasCompletedInitialSetup,
+                username: self.username.isEmpty ? nil : self.username,
+                isWorker: self.isWorker,
+                notificationsEnabled: self.notificationsEnabled,
+                notificationLeadMinutes: self.notificationLeadMinutes,
+                liveActivitiesEnabled: self.liveActivitiesEnabled,
+                hiddenSubjects: self.hiddenSubjects.isEmpty ? nil : Array(self.hiddenSubjects)
             )
-            center.add(request, withCompletionHandler: nil)
         }
-    }
-
-    @available(iOS 26.0, *)
-    private func scheduleNotificationsWithAI(for lessons: [Lesson]) async {
-        guard notificationsEnabled else { return }
-        let center = UNUserNotificationCenter.current()
-        center.removeAllPendingNotificationRequests()
-
-        var romeCal = Calendar(identifier: .gregorian)
-        romeCal.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-        let now = Date()
-        let visibleLessons = hiddenSubjects.isEmpty ? lessons : lessons.filter { !hiddenSubjects.contains($0.title) }
-
-        // Determine which lessons need a fire date (upcoming only)
-        var upcoming: [(lesson: Lesson, prev: Lesson?, fireComps: DateComponents)] = []
-        for (i, lesson) in visibleLessons.enumerated() {
-            let startMins = lesson.startTime.minutesSinceMidnight - notificationLeadMinutes
-            guard startMins >= 0 else { continue }
-            let dayComps = romeCal.dateComponents([.year, .month, .day], from: lesson.date)
-            var fireComps = DateComponents()
-            fireComps.timeZone = romeCal.timeZone
-            fireComps.year = dayComps.year
-            fireComps.month = dayComps.month
-            fireComps.day = dayComps.day
-            fireComps.hour = startMins / 60
-            fireComps.minute = startMins % 60
-            guard let fireDate = romeCal.date(from: fireComps), fireDate > now else { continue }
-            let prev = i > 0 ? visibleLessons[i - 1] : nil
-            upcoming.append((lesson: lesson, prev: prev, fireComps: fireComps))
-        }
-
-        // Generate AI bodies serially (avoids overwhelming the on-device model)
-        var bodies: [String: String] = [:]
-        for item in upcoming {
-            let body = await AINotificationService.generateBody(
-                lesson: item.lesson,
-                precedingLesson: item.prev
-            )
-            bodies[item.lesson.id] = body
-        }
-
-        // Schedule all notifications with AI-enhanced bodies
-        for item in upcoming {
-            let content = UNMutableNotificationContent()
-            content.title = item.lesson.title
-            content.body = bodies[item.lesson.id] ?? {
-                [item.lesson.startTime, item.lesson.room, item.lesson.professor]
-                    .filter { !$0.isEmpty }.joined(separator: " · ")
-            }()
-            content.sound = .default
-            content.interruptionLevel = .timeSensitive
-            let trigger = UNCalendarNotificationTrigger(dateMatching: item.fireComps, repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "lesson:\(item.lesson.id):\(notificationLeadMinutes)",
-                content: content,
-                trigger: trigger
-            )
-            center.add(request, withCompletionHandler: nil)
-        }
-    }
-
-    private func persistPreferences() {
-        localStore.savePreferences(
-            StoredPreferences(
-                selectedCourseID: selectedCourse?.id,
-                selectedCourseYear: selectedCourseYear,
-                selectedBuildingID: selectedBuilding?.id,
-                selectedAcademicYear: selectedAcademicYear,
-                hasCompletedInitialSetup: hasCompletedInitialSetup,
-                username: username.isEmpty ? nil : username,
-                isWorker: isWorker,
-                notificationsEnabled: notificationsEnabled,
-                notificationLeadMinutes: notificationLeadMinutes,
-                liveActivitiesEnabled: liveActivitiesEnabled,
-                hiddenSubjects: hiddenSubjects.isEmpty ? nil : Array(hiddenSubjects)
-            )
-        )
     }
 
     func workShift(for date: Date) -> WorkShift? {
@@ -898,28 +689,28 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func subjectFilterKey() -> String? {
-        guard let courseID = selectedCourse?.id else { return nil }
-        return "\(courseID):\(selectedCourseYear)"
-    }
-
     private func saveSubjectFilter() {
-        guard let key = subjectFilterKey() else { return }
-        localStore.saveSubjectFilter(
-            SubjectFilterEntry(knownSubjects: knownSubjects, hiddenSubjects: Array(hiddenSubjects), savedAt: Date()),
-            forKey: key
+        guard let courseID = selectedCourse?.id else { return }
+        preferencesManager.saveSubjectFilter(
+            courseID: courseID,
+            courseYear: selectedCourseYear,
+            knownSubjects: knownSubjects,
+            hiddenSubjects: Array(hiddenSubjects)
         )
     }
 
     private func loadSubjectFilter() {
         _isLoadingSubjectFilter = true
-        defer { _isLoadingSubjectFilter = false }
-        guard let key = subjectFilterKey() else {
+        defer {
+            _isLoadingSubjectFilter = false
+            notificationScheduler.hiddenSubjects = hiddenSubjects
+        }
+        guard let courseID = selectedCourse?.id else {
             knownSubjects = []
             hiddenSubjects = []
             return
         }
-        if let entry = localStore.loadSubjectFilter(forKey: key) {
+        if let entry = preferencesManager.loadSubjectFilter(courseID: courseID, courseYear: selectedCourseYear) {
             knownSubjects = entry.knownSubjects
             hiddenSubjects = Set(entry.hiddenSubjects)
         } else {

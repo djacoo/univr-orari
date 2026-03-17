@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9473E341F1C5B24D1B974B6 /* ContentView.swift */; };
 		AF1234567890ABCDEF001234 /* AIFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1234567890ABCDEF000000 /* AIFeatures.swift */; };
+		PM0000000000000000000001 /* PreferencesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM0000000000000000000000 /* PreferencesManager.swift */; };
 		48B0F121C3BC8025B3D78869 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B9EC35BE5D78C9EF7E880F /* Models.swift */; };
 		5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */; };
 		79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9403179EF835E4DBD2024AA9 /* AppModel.swift */; };
@@ -22,6 +23,8 @@
 		AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11223344556677889900BB /* PrivacyInfo.xcprivacy */; };
 		AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F1 /* UniVROrariWidget.swift */; };
 		AB0000000000000000000012 /* UniVROrariWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F2 /* UniVROrariWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
+		SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +40,7 @@
 		71810F4912E4B7B00D22177D /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9403179EF835E4DBD2024AA9 /* AppModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		AF1234567890ABCDEF000000 /* AIFeatures.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIFeatures.swift; sourceTree = "<group>"; };
+		PM0000000000000000000000 /* PreferencesManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreferencesManager.swift; sourceTree = "<group>"; };
 		ABBAE4626823721535CE8977 /* UniVRAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVRAPIClient.swift; sourceTree = "<group>"; };
 		B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D0B9EC35BE5D78C9EF7E880F /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -44,6 +48,7 @@
 		AA11223344556677889900BB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F9473E341F1C5B24D1B974B6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AB00000000000000000000F1 /* UniVROrariWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVROrariWidget.swift; sourceTree = "<group>"; };
+		SCR000000000000000000000 /* SharedCacheReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedCacheReader.swift; sourceTree = "<group>"; };
 		AB00000000000000000000F2 /* UniVROrariWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UniVROrariWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB00000000000000000000F3 /* Info.plist (Widget) */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -159,6 +164,7 @@
 				4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */,
 				F9473E341F1C5B24D1B974B6 /* ContentView.swift */,
 				9403179EF835E4DBD2024AA9 /* AppModel.swift */,
+				PM0000000000000000000000 /* PreferencesManager.swift */,
 				AF1234567890ABCDEF000000 /* AIFeatures.swift */,
 			);
 			path = App;
@@ -229,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				AB00000000000000000000F1 /* UniVROrariWidget.swift */,
+				SCR000000000000000000000 /* SharedCacheReader.swift */,
 				AB00000000000000000000F3 /* Info.plist (Widget) */,
 			);
 			path = UniVROrariWidget;
@@ -351,12 +358,14 @@
 				5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */,
 				3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */,
 				79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */,
+				PM0000000000000000000001 /* PreferencesManager.swift in Sources */,
 				AF1234567890ABCDEF001234 /* AIFeatures.swift in Sources */,
 				48B0F121C3BC8025B3D78869 /* Models.swift in Sources */,
 				D116384EDB49E2B25744F02E /* DateHelpers.swift in Sources */,
 				8FC7351163185D7EEED91C13 /* UniVRAPIClient.swift in Sources */,
 				EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */,
 				E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */,
+				SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,6 +374,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */,
+				SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -455,15 +455,18 @@ struct RoomsView: View {
     }
 
     private var emptyPrompt: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "door.left.hand.open")
+        let buildingSelected = model.selectedBuilding != nil
+        return VStack(spacing: 12) {
+            Image(systemName: buildingSelected ? "calendar.badge.exclamationmark" : "building.2")
                 .font(.system(size: 36))
                 .foregroundStyle(Color.uiTextMuted)
                 .padding(.bottom, 4)
-            Text("Find a room")
+            Text(buildingSelected ? "No room data" : "Select a building")
                 .font(.headline)
                 .foregroundStyle(Color.uiTextPrimary)
-            Text("Search by name or tap a chip to view its schedule and free periods.")
+            Text(buildingSelected
+                 ? "No room data for this date. Try a different day."
+                 : "Select a building above to see room availability.")
                 .font(.subheadline)
                 .foregroundStyle(Color.uiTextSecondary)
                 .multilineTextAlignment(.center)
