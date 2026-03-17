@@ -17,7 +17,7 @@ final class PreferencesManager {
         localStore.savePreferences(preferences)
     }
 
-    func schedulePersist(preferences: @escaping @Sendable () -> StoredPreferences) {
+    func schedulePersist(preferences: @escaping @MainActor () -> StoredPreferences) {
         persistTask?.cancel()
         persistTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(100))

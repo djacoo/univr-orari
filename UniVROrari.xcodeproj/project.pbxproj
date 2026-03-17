@@ -25,6 +25,26 @@
 		AB0000000000000000000012 /* UniVROrariWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F2 /* UniVROrariWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
 		SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
+		A1000101000000000000000F /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001000000000000000F /* LiveActivityManager.swift */; };
+		A1000102000000000000000F /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000000F /* NetworkMonitor.swift */; };
+		A1000103000000000000000F /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003000000000000000F /* NotificationScheduler.swift */; };
+		A1000104000000000000000F /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000004000000000000000F /* SpotlightIndexer.swift */; };
+		A1000105000000000000000F /* AttendanceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000005000000000000000F /* AttendanceStore.swift */; };
+		A1000106000000000000000F /* ICSExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000006000000000000000F /* ICSExporter.swift */; };
+		A1000107000000000000000F /* LectureActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000007000000000000000F /* LectureActivityAttributes.swift */; };
+		A1000108000000000000000F /* LessonNotesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000008000000000000000F /* LessonNotesStore.swift */; };
+		A1000109000000000000000F /* ScheduleDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000009000000000000000F /* ScheduleDiff.swift */; };
+		A100010A000000000000000F /* DayCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000A000000000000000F /* DayCardView.swift */; };
+		A100010B000000000000000F /* LessonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000B000000000000000F /* LessonCard.swift */; };
+		A100010C000000000000000F /* LessonNoteSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000C000000000000000F /* LessonNoteSheet.swift */; };
+		A100010D000000000000000F /* ScheduleGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000D000000000000000F /* ScheduleGridView.swift */; };
+		A100010E000000000000000F /* ScheduleHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000E000000000000000F /* ScheduleHelpers.swift */; };
+		A100010F000000000000000F /* ScheduleSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000F000000000000000F /* ScheduleSnapshot.swift */; };
+		A1000110000000000000000F /* SubjectFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010000000000000000F /* SubjectFilterSheet.swift */; };
+		A1000111000000000000000F /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000011000000000000000F /* TodayView.swift */; };
+		A1000207000000000000000F /* LectureActivityAttributes.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = A1000007000000000000000F /* LectureActivityAttributes.swift */; };
+		A1000208000000000000000F /* Models.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = D0B9EC35BE5D78C9EF7E880F /* Models.swift */; };
+		A1000209000000000000000F /* DateHelpers.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = 416D735280BCBB40E151D3EA /* DateHelpers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +71,23 @@
 		SCR000000000000000000000 /* SharedCacheReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedCacheReader.swift; sourceTree = "<group>"; };
 		AB00000000000000000000F2 /* UniVROrariWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UniVROrariWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB00000000000000000000F3 /* Info.plist (Widget) */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000001000000000000000F /* LiveActivityManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		A1000002000000000000000F /* NetworkMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		A1000003000000000000000F /* NotificationScheduler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
+		A1000004000000000000000F /* SpotlightIndexer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
+		A1000005000000000000000F /* AttendanceStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttendanceStore.swift; sourceTree = "<group>"; };
+		A1000006000000000000000F /* ICSExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ICSExporter.swift; sourceTree = "<group>"; };
+		A1000007000000000000000F /* LectureActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LectureActivityAttributes.swift; sourceTree = "<group>"; };
+		A1000008000000000000000F /* LessonNotesStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LessonNotesStore.swift; sourceTree = "<group>"; };
+		A1000009000000000000000F /* ScheduleDiff.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleDiff.swift; sourceTree = "<group>"; };
+		A100000A000000000000000F /* DayCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DayCardView.swift; sourceTree = "<group>"; };
+		A100000B000000000000000F /* LessonCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LessonCard.swift; sourceTree = "<group>"; };
+		A100000C000000000000000F /* LessonNoteSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LessonNoteSheet.swift; sourceTree = "<group>"; };
+		A100000D000000000000000F /* ScheduleGridView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleGridView.swift; sourceTree = "<group>"; };
+		A100000E000000000000000F /* ScheduleHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleHelpers.swift; sourceTree = "<group>"; };
+		A100000F000000000000000F /* ScheduleSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleSnapshot.swift; sourceTree = "<group>"; };
+		A1000010000000000000000F /* SubjectFilterSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SubjectFilterSheet.swift; sourceTree = "<group>"; };
+		A1000011000000000000000F /* TodayView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +203,10 @@
 				9403179EF835E4DBD2024AA9 /* AppModel.swift */,
 				PM0000000000000000000000 /* PreferencesManager.swift */,
 				AF1234567890ABCDEF000000 /* AIFeatures.swift */,
+				A1000001000000000000000F /* LiveActivityManager.swift */,
+				A1000002000000000000000F /* NetworkMonitor.swift */,
+				A1000003000000000000000F /* NotificationScheduler.swift */,
+				A1000004000000000000000F /* SpotlightIndexer.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -201,6 +242,11 @@
 			children = (
 				D0B9EC35BE5D78C9EF7E880F /* Models.swift */,
 				416D735280BCBB40E151D3EA /* DateHelpers.swift */,
+				A1000005000000000000000F /* AttendanceStore.swift */,
+				A1000006000000000000000F /* ICSExporter.swift */,
+				A1000007000000000000000F /* LectureActivityAttributes.swift */,
+				A1000008000000000000000F /* LessonNotesStore.swift */,
+				A1000009000000000000000F /* ScheduleDiff.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -218,6 +264,14 @@
 			isa = PBXGroup;
 			children = (
 				01564628BE969E5B84632304 /* WeeklyScheduleView.swift */,
+				A100000A000000000000000F /* DayCardView.swift */,
+				A100000B000000000000000F /* LessonCard.swift */,
+				A100000C000000000000000F /* LessonNoteSheet.swift */,
+				A100000D000000000000000F /* ScheduleGridView.swift */,
+				A100000E000000000000000F /* ScheduleHelpers.swift */,
+				A100000F000000000000000F /* ScheduleSnapshot.swift */,
+				A1000010000000000000000F /* SubjectFilterSheet.swift */,
+				A1000011000000000000000F /* TodayView.swift */,
 			);
 			path = WeeklySchedule;
 			sourceTree = "<group>";
@@ -366,6 +420,23 @@
 				EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */,
 				E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */,
 				SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */,
+				A1000101000000000000000F /* LiveActivityManager.swift in Sources */,
+				A1000102000000000000000F /* NetworkMonitor.swift in Sources */,
+				A1000103000000000000000F /* NotificationScheduler.swift in Sources */,
+				A1000104000000000000000F /* SpotlightIndexer.swift in Sources */,
+				A1000105000000000000000F /* AttendanceStore.swift in Sources */,
+				A1000106000000000000000F /* ICSExporter.swift in Sources */,
+				A1000107000000000000000F /* LectureActivityAttributes.swift in Sources */,
+				A1000108000000000000000F /* LessonNotesStore.swift in Sources */,
+				A1000109000000000000000F /* ScheduleDiff.swift in Sources */,
+				A100010A000000000000000F /* DayCardView.swift in Sources */,
+				A100010B000000000000000F /* LessonCard.swift in Sources */,
+				A100010C000000000000000F /* LessonNoteSheet.swift in Sources */,
+				A100010D000000000000000F /* ScheduleGridView.swift in Sources */,
+				A100010E000000000000000F /* ScheduleHelpers.swift in Sources */,
+				A100010F000000000000000F /* ScheduleSnapshot.swift in Sources */,
+				A1000110000000000000000F /* SubjectFilterSheet.swift in Sources */,
+				A1000111000000000000000F /* TodayView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,6 +446,9 @@
 			files = (
 				AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */,
 				SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */,
+				A1000207000000000000000F /* LectureActivityAttributes.swift in Sources (Widget) */,
+				A1000208000000000000000F /* Models.swift in Sources (Widget) */,
+				A1000209000000000000000F /* DateHelpers.swift in Sources (Widget) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

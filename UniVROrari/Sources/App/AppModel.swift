@@ -161,7 +161,7 @@ final class AppModel: ObservableObject {
             notificationScheduler.notificationLeadMinutes = notificationLeadMinutes
             liveActivityManager.notificationLeadMinutes = notificationLeadMinutes
             if notificationsEnabled { notificationScheduler.schedule(for: lessons) }
-            if liveActivitiesEnabled { liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "") }
+            if liveActivitiesEnabled { liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "UniVR") }
         }
     }
 
@@ -169,7 +169,7 @@ final class AppModel: ObservableObject {
         didSet {
             schedulePersist()
             if liveActivitiesEnabled {
-                liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "")
+                liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "UniVR")
             } else {
                 liveActivityManager.end()
             }
@@ -257,7 +257,7 @@ final class AppModel: ObservableObject {
                 let isDark = UIApplication.shared.connectedScenes
                     .compactMap { $0 as? UIWindowScene }
                     .first?.traitCollection.userInterfaceStyle == .dark
-                self.liveActivityManager.refresh(lessonsGroupedByDay: self.lessonsGroupedByDay, courseName: self.selectedCourse?.name ?? "", isDark: isDark)
+                self.liveActivityManager.refresh(lessonsGroupedByDay: self.lessonsGroupedByDay, courseName: self.selectedCourse?.name ?? "UniVR", isDark: isDark)
             }
         }
 
@@ -272,6 +272,10 @@ final class AppModel: ObservableObject {
                     if self.roomsError != nil { await self.refreshRooms() }
                 }
             }
+    }
+
+    func refreshLiveActivity(isDark: Bool? = nil) {
+        liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "UniVR", isDark: isDark)
     }
 
     var requiresInitialSetup: Bool {
@@ -486,7 +490,7 @@ final class AppModel: ObservableObject {
                 notificationScheduler.schedule(for: fetchedLessons)
             }
             SpotlightIndexer.indexLessons(fetchedLessons)
-            liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "")
+            liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse.name)
             prefetchAdjacentWeeks()
         } catch {
             if Self.isCancelledError(error) { return }
