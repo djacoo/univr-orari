@@ -19,6 +19,8 @@ struct DayCardView: View {
     let dayShift: WorkShift?
     var onLessonTap: (Lesson) -> Void = { _ in }
 
+    @EnvironmentObject private var attendanceStore: AttendanceStore
+
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
 
     var body: some View {
@@ -81,8 +83,14 @@ struct DayCardView: View {
                     if idx > 0 {
                         Rectangle().fill(Color.uiStroke).frame(height: 0.5).padding(.horizontal, 20)
                     }
-                    LessonCard(lesson: dayLessons[idx], isActive: false, onTap: { onLessonTap(dayLessons[idx]) })
-                        .padding(.horizontal, 20)
+                    LessonCard(
+                        lesson: dayLessons[idx],
+                        isActive: false,
+                        attendanceStatus: attendanceStore.status(for: dayLessons[idx].id, date: dayLessons[idx].date),
+                        onTap: { onLessonTap(dayLessons[idx]) },
+                        onAttendanceTap: { _ = attendanceStore.toggle(for: dayLessons[idx].id, date: dayLessons[idx].date) }
+                    )
+                    .padding(.horizontal, 20)
                 }
             }
         }
@@ -103,8 +111,14 @@ struct DayCardView: View {
             } else if idx > 0 {
                 Rectangle().fill(Color.uiStroke).frame(height: 0.5).padding(.horizontal, 20)
             }
-            LessonCard(lesson: lesson, isActive: isActive(lesson), onTap: { onLessonTap(lesson) })
-                .padding(.horizontal, 20)
+            LessonCard(
+                lesson: lesson,
+                isActive: isActive(lesson),
+                attendanceStatus: attendanceStore.status(for: lesson.id, date: lesson.date),
+                onTap: { onLessonTap(lesson) },
+                onAttendanceTap: { _ = attendanceStore.toggle(for: lesson.id, date: lesson.date) }
+            )
+            .padding(.horizontal, 20)
         }
         if insertIdx == dayLessons.count {
             NowIndicatorView(label: nowLabel).padding(.horizontal, 20)

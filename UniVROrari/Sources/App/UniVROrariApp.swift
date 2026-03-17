@@ -35,10 +35,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct UniVROrariApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var model = AppModel()
+    @StateObject private var attendanceStore = AttendanceStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView(model: model)
+                .environmentObject(attendanceStore)
                 .task { await model.bootstrap() }
                 .onAppear { appDelegate.model = model }
                 .onContinueUserActivity(CSSearchableItemActionType) { activity in

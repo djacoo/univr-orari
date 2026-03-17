@@ -30,9 +30,19 @@ func subjectColor(for title: String) -> Color {
 struct LessonCard: View {
     let lesson: Lesson
     var isActive: Bool = false
+    var attendanceStatus: AttendanceStatus = .unmarked
     var onTap: (() -> Void)? = nil
+    var onAttendanceTap: (() -> Void)? = nil
 
     private var accentColor: Color { subjectColor(for: lesson.title) }
+
+    private var attendanceDotColor: Color? {
+        switch attendanceStatus {
+        case .attended: return Color(hex: "10B981")
+        case .skipped:  return Color(hex: "EF4444")
+        case .unmarked: return nil
+        }
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -69,11 +79,19 @@ struct LessonCard: View {
             .padding(.leading, 12)
             .padding(.trailing, 14)
             .padding(.vertical, 13)
+
+            if let dotColor = attendanceDotColor {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 7, height: 7)
+                    .padding(.trailing, 12)
+            }
         }
         .background(isActive ? Color.uiAccent.opacity(0.04) : Color.clear)
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: isActive) { _, new in new }
         .contentShape(Rectangle())
         .onTapGesture { onTap?() }
+        .onLongPressGesture { onAttendanceTap?() }
     }
 }
 
