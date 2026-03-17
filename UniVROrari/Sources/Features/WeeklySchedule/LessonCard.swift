@@ -35,6 +35,10 @@ struct LessonCard: View {
     var onTap: (() -> Void)? = nil
     var onAttendanceTap: (() -> Void)? = nil
 
+    @ScaledMetric(relativeTo: .footnote) private var titleSize: CGFloat = 13
+    @ScaledMetric(relativeTo: .caption2) private var timeSize: CGFloat = 11
+    @ScaledMetric(relativeTo: .caption2) private var roomSize: CGFloat = 11
+
     private var accentColor: Color { subjectColor(for: lesson.title) }
 
     private var attendanceDotColor: Color? {
@@ -53,7 +57,7 @@ struct LessonCard: View {
 
             VStack(alignment: .trailing, spacing: 1) {
                 Text(lesson.startTime)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.system(size: timeSize, weight: .semibold, design: .monospaced))
                     .foregroundStyle(isActive ? Color.uiAccent : Color.uiTextSecondary)
                 Text(lesson.endTime)
                     .font(.system(size: 10, design: .monospaced))
@@ -65,14 +69,14 @@ struct LessonCard: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(lesson.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: titleSize, weight: .semibold))
                     .foregroundStyle(Color.uiTextPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if !lesson.room.isEmpty {
                     Text(lesson.room)
-                        .font(.system(size: 11))
+                        .font(.system(size: roomSize))
                         .foregroundStyle(Color.uiTextMuted)
                         .lineLimit(1)
                 }

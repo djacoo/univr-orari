@@ -22,6 +22,9 @@ struct DayCardView: View {
     @EnvironmentObject private var attendanceStore: AttendanceStore
     @EnvironmentObject private var lessonNotesStore: LessonNotesStore
 
+    @ScaledMetric(relativeTo: .title) private var dayNumberSize: CGFloat = 26
+    @ScaledMetric(relativeTo: .caption2) private var weekdaySize: CGFloat = 9
+
     @State private var noteLesson: Lesson?
 
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
@@ -45,11 +48,11 @@ struct DayCardView: View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: -3) {
                 Text(weekday)
-                    .font(.system(size: 9, weight: .black))
+                    .font(.system(size: weekdaySize, weight: .black))
                     .tracking(2)
                     .foregroundStyle(isToday ? Color.uiAccent : Color.uiTextMuted)
                 Text("\(day)")
-                    .font(.system(size: 26, weight: .black))
+                    .font(.system(size: dayNumberSize, weight: .black))
                     .foregroundStyle(isToday ? Color.uiAccent : Color.uiTextPrimary)
             }
             .frame(width: 36, alignment: .leading)
@@ -168,6 +171,7 @@ struct DayCardView: View {
 struct NowIndicatorView: View {
     let label: String
     @State private var pulsing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 6) {
@@ -185,6 +189,7 @@ struct NowIndicatorView: View {
         }
         .padding(.vertical, 6)
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 pulsing = true
             }
@@ -197,6 +202,7 @@ struct NowIndicatorView: View {
 struct TimelineNowRow: View {
     let labelWidth: CGFloat
     @State private var pulsing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 0) {
@@ -216,6 +222,7 @@ struct TimelineNowRow: View {
                 .opacity(pulsing ? 0.35 : 1.0)
         }
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
                 pulsing = true
             }

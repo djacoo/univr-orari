@@ -331,6 +331,7 @@ struct WeeklyScheduleView: View {
         let dayNum = cal.component(.day, from: day)
         let abbrev = String(chipWeekdayFormatter.string(from: day).prefix(1))
         let hasContent = calendarDayDates.contains(where: { cal.isDate($0, inSameDayAs: day) })
+        let fullWeekday = chipWeekdayFormatter.string(from: day)
 
         return VStack(spacing: 4) {
             Text(abbrev)
@@ -352,6 +353,8 @@ struct WeeklyScheduleView: View {
                 .frame(width: 3, height: 3)
         }
         .frame(maxWidth: .infinity)
+        .accessibilityLabel("\(fullWeekday) \(dayNum)")
+        .accessibilityHint(hasContent ? "Has lectures" : "No lectures")
     }
 
     // MARK: View mode toggle
