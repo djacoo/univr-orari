@@ -17,6 +17,8 @@ final class AppModel: ObservableObject {
     private let preferencesManager: PreferencesManager
     private let notificationScheduler = NotificationScheduler()
     private let liveActivityManager = LiveActivityManager()
+    private let networkMonitor = NetworkMonitor()
+    private var networkObservation: AnyCancellable?
 
     private var preferredCourseID: String?
     private var preferredBuildingID: String?
@@ -258,11 +260,25 @@ final class AppModel: ObservableObject {
                 self.liveActivityManager.refresh(lessonsGroupedByDay: self.lessonsGroupedByDay, courseName: self.selectedCourse?.name ?? "", isDark: isDark)
             }
         }
+
+        networkObservation = networkMonitor.$isConnected
+            .removeDuplicates()
+            .dropFirst()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self, self.hasCompletedInitialSetup else { return }
+                    if self.lessonsError != nil { await self.refreshLessons() }
+                    if self.roomsError != nil { await self.refreshRooms() }
+                }
+            }
     }
 
     var requiresInitialSetup: Bool {
         !hasCompletedInitialSetup || selectedCourse == nil
     }
+
+    var isNetworkConnected: Bool { networkMonitor.isConnected }
 
     var availableAcademicYears: [Int] {
         let current = DateHelpers.currentAcademicYear()
