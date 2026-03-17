@@ -56,7 +56,7 @@ final class AppModel: ObservableObject {
                 weekStartDate = defaultWeekStart(forAcademicYear: selectedAcademicYear)
             }
 
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -68,7 +68,7 @@ final class AppModel: ObservableObject {
                 return
             }
             guard !_isApplyingCourseChange else { return }
-            persistPreferences()
+            schedulePersist()
             loadSubjectFilter()
         }
     }
@@ -86,7 +86,7 @@ final class AppModel: ObservableObject {
 
     @Published var hasCompletedInitialSetup = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -101,7 +101,7 @@ final class AppModel: ObservableObject {
             _isApplyingCourseChange = false
             lessons = []
             lessonsError = nil
-            persistPreferences()
+            schedulePersist()
             loadSubjectFilter()
         }
     }
@@ -124,7 +124,7 @@ final class AppModel: ObservableObject {
             guard !_isLoadingSubjectFilter else { return }
             lessonsGroupedByDay = Self.groupLessons(lessons, excluding: hiddenSubjects)
             saveSubjectFilter()
-            persistPreferences()
+            schedulePersist()
         }
     }
     private var _isLoadingSubjectFilter = false
@@ -134,7 +134,7 @@ final class AppModel: ObservableObject {
     @Published var selectedBuilding: Building? {
         didSet {
             preferredBuildingID = selectedBuilding?.id
-            persistPreferences()
+            schedulePersist()
         }
     }
 
@@ -148,17 +148,17 @@ final class AppModel: ObservableObject {
     @Published private(set) var allRoomNames: [String] = []
 
     @Published var username: String = "" {
-        didSet { persistPreferences() }
+        didSet { schedulePersist() }
     }
     @Published var profileImage: UIImage?
 
     @Published var isWorker: Bool = false {
-        didSet { persistPreferences() }
+        didSet { schedulePersist() }
     }
 
     @Published var notificationsEnabled: Bool = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
             if notificationsEnabled {
                 Task { await requestNotificationPermission() }
             } else {
@@ -168,7 +168,7 @@ final class AppModel: ObservableObject {
     }
     @Published var notificationLeadMinutes: Int = 15 {
         didSet {
-            persistPreferences()
+            schedulePersist()
             if notificationsEnabled { scheduleNotifications(for: lessons) }
             if liveActivitiesEnabled { refreshLiveActivity() }
         }
@@ -176,7 +176,7 @@ final class AppModel: ObservableObject {
 
     @Published var liveActivitiesEnabled: Bool = false {
         didSet {
-            persistPreferences()
+            schedulePersist()
             if liveActivitiesEnabled {
                 refreshLiveActivity()
             } else {
@@ -192,6 +192,7 @@ final class AppModel: ObservableObject {
 
     private var lectureActivity: Activity<LectureActivityAttributes>?
     private var liveActivityTimerTask: Task<Void, Never>?
+    private var persistTask: Task<Void, Never>?
 
     private static let profileImageURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -863,6 +864,15 @@ final class AppModel: ObservableObject {
                 hiddenSubjects: hiddenSubjects.isEmpty ? nil : Array(hiddenSubjects)
             )
         )
+    }
+
+    private func schedulePersist() {
+        persistTask?.cancel()
+        persistTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            self?.persistPreferences()
+        }
     }
 
     func workShift(for date: Date) -> WorkShift? {
