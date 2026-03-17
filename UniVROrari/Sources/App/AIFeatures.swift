@@ -22,21 +22,6 @@ private struct IntentCacheEntry: Codable {
     let lessons: [Lesson]
 }
 
-private func aiCurrentAcademicYear() -> Int {
-    let cal = Calendar(identifier: .gregorian)
-    let m = cal.component(.month, from: Date())
-    let y = cal.component(.year, from: Date())
-    return m >= 8 ? y : y - 1
-}
-
-private func aiMondayOf(_ date: Date) -> Date {
-    var cal = Calendar(identifier: .gregorian)
-    cal.firstWeekday = 2
-    let wd = cal.component(.weekday, from: date)
-    let delta = wd == 1 ? -6 : 2 - wd
-    return cal.date(byAdding: .day, value: delta, to: cal.startOfDay(for: date)) ?? date
-}
-
 private func aiLoadLessons(for date: Date) -> [Lesson] {
     guard let defaults = UserDefaults(suiteName: aiAppGroup) else { return [] }
     let decoder = JSONDecoder()
@@ -46,13 +31,9 @@ private func aiLoadLessons(for date: Date) -> [Lesson] {
         let courseID = prefs.selectedCourseID
     else { return [] }
 
-    let monday = aiMondayOf(date)
-    let fmt = DateFormatter()
-    fmt.locale = Locale(identifier: "en_US_POSIX")
-    fmt.dateFormat = "yyyy-MM-dd"
-    fmt.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-    let weekStr = fmt.string(from: monday)
-    let year = prefs.selectedAcademicYear ?? aiCurrentAcademicYear()
+    let monday = DateHelpers.monday(for: date)
+    let weekStr = DateHelpers.apiDateFormatter.string(from: monday)
+    let year = prefs.selectedAcademicYear ?? DateHelpers.currentAcademicYear()
     let cacheKey = "lessons:\(courseID):\(prefs.selectedCourseYear):\(year):\(weekStr)"
 
     guard
@@ -66,11 +47,6 @@ private func aiLoadLessons(for date: Date) -> [Lesson] {
     return entry.lessons
         .filter { cal.isDate($0.date, inSameDayAs: date) && !hidden.contains($0.title) }
         .sorted { $0.startTime < $1.startTime }
-}
-
-private func aiMins(_ time: String) -> Int {
-    let p = time.split(separator: ":").compactMap { Int($0) }
-    return p.count >= 2 ? p[0] * 60 + p[1] : 0
 }
 
 // MARK: - Next Lecture Intent
@@ -91,17 +67,17 @@ struct NextLectureIntent: AppIntent {
         let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
 
         if let live = today.first(where: {
-            aiMins($0.startTime) <= currentMins && currentMins < aiMins($0.endTime)
+            $0.startTime.minutesSinceMidnight <= currentMins && currentMins < $0.endTime.minutesSinceMidnight
         }) {
             let room = live.room.isEmpty ? "" : " in \(live.room)"
-            let rem = aiMins(live.endTime) - currentMins
+            let rem = live.endTime.minutesSinceMidnight - currentMins
             let remStr = rem >= 60 ? "\(rem / 60)h \(rem % 60)m" : "\(rem) min"
             return .result(dialog: "\(live.title)\(room) is in progress — \(remStr) remaining.")
         }
 
-        if let next = today.first(where: { aiMins($0.startTime) > currentMins }) {
+        if let next = today.first(where: { $0.startTime.minutesSinceMidnight > currentMins }) {
             let room = next.room.isEmpty ? "" : " in \(next.room)"
-            let wait = aiMins(next.startTime) - currentMins
+            let wait = next.startTime.minutesSinceMidnight - currentMins
             let waitStr = wait >= 60 ? "\(wait / 60)h \(wait % 60)m" : "\(wait) min"
             return .result(dialog: "\(next.title) starts at \(next.startTime)\(room) — in \(waitStr).")
         }
