@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9473E341F1C5B24D1B974B6 /* ContentView.swift */; };
 		AF1234567890ABCDEF001234 /* AIFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1234567890ABCDEF000000 /* AIFeatures.swift */; };
+		PM0000000000000000000001 /* PreferencesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM0000000000000000000000 /* PreferencesManager.swift */; };
 		48B0F121C3BC8025B3D78869 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B9EC35BE5D78C9EF7E880F /* Models.swift */; };
 		5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */; };
 		79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9403179EF835E4DBD2024AA9 /* AppModel.swift */; };
@@ -37,6 +38,7 @@
 		71810F4912E4B7B00D22177D /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9403179EF835E4DBD2024AA9 /* AppModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		AF1234567890ABCDEF000000 /* AIFeatures.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIFeatures.swift; sourceTree = "<group>"; };
+		PM0000000000000000000000 /* PreferencesManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreferencesManager.swift; sourceTree = "<group>"; };
 		ABBAE4626823721535CE8977 /* UniVRAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVRAPIClient.swift; sourceTree = "<group>"; };
 		B45F48BCAF3A59521A1EF81A /* Preview Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D0B9EC35BE5D78C9EF7E880F /* Models.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				4E2D03424166CE6BFDB9F06B /* UniVROrariApp.swift */,
 				F9473E341F1C5B24D1B974B6 /* ContentView.swift */,
 				9403179EF835E4DBD2024AA9 /* AppModel.swift */,
+				PM0000000000000000000000 /* PreferencesManager.swift */,
 				AF1234567890ABCDEF000000 /* AIFeatures.swift */,
 			);
 			path = App;
@@ -351,6 +354,7 @@
 				5D43E541A30804DDC36218F6 /* UniVROrariApp.swift in Sources */,
 				3E820F129BFD0875A2B484C0 /* ContentView.swift in Sources */,
 				79681CF34FCB33A44C41E9F1 /* AppModel.swift in Sources */,
+				PM0000000000000000000001 /* PreferencesManager.swift in Sources */,
 				AF1234567890ABCDEF001234 /* AIFeatures.swift in Sources */,
 				48B0F121C3BC8025B3D78869 /* Models.swift in Sources */,
 				D116384EDB49E2B25744F02E /* DateHelpers.swift in Sources */,

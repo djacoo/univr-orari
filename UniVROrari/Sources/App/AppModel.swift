@@ -14,6 +14,7 @@ enum ShortcutAction {
 final class AppModel: ObservableObject {
     private let apiClient: UniVRAPIClient
     private let localStore: LocalDataStore
+    private let preferencesManager: PreferencesManager
     private let notificationScheduler = NotificationScheduler()
     private let liveActivityManager = LiveActivityManager()
 
@@ -178,8 +179,6 @@ final class AppModel: ObservableObject {
 
     @Published var pendingShortcutAction: ShortcutAction?
 
-    private var persistTask: Task<Void, Never>?
-
     private static let profileImageURL: URL = {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("profile_photo.jpg")
@@ -208,8 +207,9 @@ final class AppModel: ObservableObject {
     ) {
         self.apiClient = apiClient
         self.localStore = localStore
+        self.preferencesManager = PreferencesManager(localStore: localStore)
 
-        let storedPreferences = localStore.loadPreferences()
+        let storedPreferences = preferencesManager.loadPreferences()
 
         selectedCourseYear = min(max(storedPreferences.selectedCourseYear, 1), 5)
         selectedAcademicYear = storedPreferences.selectedAcademicYear ?? defaultAcademicYear
@@ -578,30 +578,22 @@ final class AppModel: ObservableObject {
         selectedBuilding = buildings.first
     }
 
-    private func persistPreferences() {
-        localStore.savePreferences(
-            StoredPreferences(
-                selectedCourseID: selectedCourse?.id,
-                selectedCourseYear: selectedCourseYear,
-                selectedBuildingID: selectedBuilding?.id,
-                selectedAcademicYear: selectedAcademicYear,
-                hasCompletedInitialSetup: hasCompletedInitialSetup,
-                username: username.isEmpty ? nil : username,
-                isWorker: isWorker,
-                notificationsEnabled: notificationsEnabled,
-                notificationLeadMinutes: notificationLeadMinutes,
-                liveActivitiesEnabled: liveActivitiesEnabled,
-                hiddenSubjects: hiddenSubjects.isEmpty ? nil : Array(hiddenSubjects)
-            )
-        )
-    }
-
     private func schedulePersist() {
-        persistTask?.cancel()
-        persistTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(100))
-            guard !Task.isCancelled else { return }
-            self?.persistPreferences()
+        preferencesManager.schedulePersist { [weak self] in
+            guard let self else { return .default }
+            return StoredPreferences(
+                selectedCourseID: self.selectedCourse?.id,
+                selectedCourseYear: self.selectedCourseYear,
+                selectedBuildingID: self.selectedBuilding?.id,
+                selectedAcademicYear: self.selectedAcademicYear,
+                hasCompletedInitialSetup: self.hasCompletedInitialSetup,
+                username: self.username.isEmpty ? nil : self.username,
+                isWorker: self.isWorker,
+                notificationsEnabled: self.notificationsEnabled,
+                notificationLeadMinutes: self.notificationLeadMinutes,
+                liveActivitiesEnabled: self.liveActivitiesEnabled,
+                hiddenSubjects: self.hiddenSubjects.isEmpty ? nil : Array(self.hiddenSubjects)
+            )
         }
     }
 
@@ -638,16 +630,13 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func subjectFilterKey() -> String? {
-        guard let courseID = selectedCourse?.id else { return nil }
-        return "\(courseID):\(selectedCourseYear)"
-    }
-
     private func saveSubjectFilter() {
-        guard let key = subjectFilterKey() else { return }
-        localStore.saveSubjectFilter(
-            SubjectFilterEntry(knownSubjects: knownSubjects, hiddenSubjects: Array(hiddenSubjects), savedAt: Date()),
-            forKey: key
+        guard let courseID = selectedCourse?.id else { return }
+        preferencesManager.saveSubjectFilter(
+            courseID: courseID,
+            courseYear: selectedCourseYear,
+            knownSubjects: knownSubjects,
+            hiddenSubjects: Array(hiddenSubjects)
         )
     }
 
@@ -657,12 +646,12 @@ final class AppModel: ObservableObject {
             _isLoadingSubjectFilter = false
             notificationScheduler.hiddenSubjects = hiddenSubjects
         }
-        guard let key = subjectFilterKey() else {
+        guard let courseID = selectedCourse?.id else {
             knownSubjects = []
             hiddenSubjects = []
             return
         }
-        if let entry = localStore.loadSubjectFilter(forKey: key) {
+        if let entry = preferencesManager.loadSubjectFilter(courseID: courseID, courseYear: selectedCourseYear) {
             knownSubjects = entry.knownSubjects
             hiddenSubjects = Set(entry.hiddenSubjects)
         } else {
