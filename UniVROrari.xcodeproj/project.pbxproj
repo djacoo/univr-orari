@@ -23,6 +23,8 @@
 		AA11223344556677889900AA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11223344556677889900BB /* PrivacyInfo.xcprivacy */; };
 		AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F1 /* UniVROrariWidget.swift */; };
 		AB0000000000000000000012 /* UniVROrariWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000F2 /* UniVROrariWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
+		SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */ = {isa = PBXBuildFile; fileRef = SCR000000000000000000000 /* SharedCacheReader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +48,7 @@
 		AA11223344556677889900BB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F9473E341F1C5B24D1B974B6 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		AB00000000000000000000F1 /* UniVROrariWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniVROrariWidget.swift; sourceTree = "<group>"; };
+		SCR000000000000000000000 /* SharedCacheReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedCacheReader.swift; sourceTree = "<group>"; };
 		AB00000000000000000000F2 /* UniVROrariWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UniVROrariWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB00000000000000000000F3 /* Info.plist (Widget) */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -232,6 +235,7 @@
 			isa = PBXGroup;
 			children = (
 				AB00000000000000000000F1 /* UniVROrariWidget.swift */,
+				SCR000000000000000000000 /* SharedCacheReader.swift */,
 				AB00000000000000000000F3 /* Info.plist (Widget) */,
 			);
 			path = UniVROrariWidget;
@@ -361,6 +365,7 @@
 				8FC7351163185D7EEED91C13 /* UniVRAPIClient.swift in Sources */,
 				EDF592B3F1D45B22D5C07597 /* WeeklyScheduleView.swift in Sources */,
 				E64859E12F57D69A491338A9 /* RoomsView.swift in Sources */,
+				SCR000000000000000000001 /* SharedCacheReader.swift in Sources (App) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -369,6 +374,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB0000000000000000000011 /* UniVROrariWidget.swift in Sources */,
+				SCR000000000000000000002 /* SharedCacheReader.swift in Sources (Widget) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -4,49 +4,8 @@ import FoundationModels
 import NaturalLanguage
 import SwiftUI
 
-// MARK: - Shared helpers for intent data loading
-// Reads from the same app group UserDefaults as the widget, so works even when the app is backgrounded.
-
-private let aiAppGroup = "group.it.univr.orari"
-
-private struct IntentPrefs: Codable {
-    var selectedCourseID: String?
-    var selectedCourseYear: Int
-    var selectedAcademicYear: Int?
-    var hiddenSubjects: [String]?
-}
-
-private struct IntentCacheEntry: Codable {
-    let key: String
-    let savedAt: Date
-    let lessons: [Lesson]
-}
-
-private func aiLoadLessons(for date: Date) -> [Lesson] {
-    guard let defaults = UserDefaults(suiteName: aiAppGroup) else { return [] }
-    let decoder = JSONDecoder()
-    guard
-        let prefData = defaults.data(forKey: "univr.preferences"),
-        let prefs = try? decoder.decode(IntentPrefs.self, from: prefData),
-        let courseID = prefs.selectedCourseID
-    else { return [] }
-
-    let monday = DateHelpers.monday(for: date)
-    let weekStr = DateHelpers.apiDateFormatter.string(from: monday)
-    let year = prefs.selectedAcademicYear ?? DateHelpers.currentAcademicYear()
-    let cacheKey = "lessons:\(courseID):\(prefs.selectedCourseYear):\(year):\(weekStr)"
-
-    guard
-        let cacheData = defaults.data(forKey: "univr.cache.lessons"),
-        let entries = try? decoder.decode([IntentCacheEntry].self, from: cacheData),
-        let entry = entries.first(where: { $0.key == cacheKey })
-    else { return [] }
-
-    let cal = Calendar.current
-    let hidden = Set(prefs.hiddenSubjects ?? [])
-    return entry.lessons
-        .filter { cal.isDate($0.date, inSameDayAs: date) && !hidden.contains($0.title) }
-        .sorted { $0.startTime < $1.startTime }
+private func aiLoadLessons(for date: Date) -> [SharedCacheReader.CachedLesson] {
+    SharedCacheReader.lessons(for: date)
 }
 
 // MARK: - Next Lecture Intent

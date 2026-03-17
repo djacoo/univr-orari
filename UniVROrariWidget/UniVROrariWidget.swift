@@ -2,88 +2,14 @@ import WidgetKit
 import SwiftUI
 import ActivityKit
 
-private let appGroupSuite = "group.it.univr.orari"
-
-// MARK: - Lightweight mirror types (must stay in sync with main app Codable models)
-
-fileprivate struct WidgetLesson: Codable, Identifiable {
-    let id: String
-    let title: String
-    let professor: String
-    let room: String
-    let building: String
-    let date: Date
-    let startTime: String
-    let endTime: String
-}
-
-fileprivate struct WidgetLessonsCacheEntry: Codable {
-    let key: String
-    let savedAt: Date
-    let lessons: [WidgetLesson]
-}
-
-fileprivate struct WidgetPreferences: Codable {
-    var selectedCourseID: String?
-    var selectedCourseYear: Int
-    var selectedAcademicYear: Int?
-    var hiddenSubjects: [String]?
-}
-
+private typealias WidgetLesson = SharedCacheReader.CachedLesson
 
 // MARK: - Helpers
-
-private func italianMonday(for date: Date) -> Date {
-    var cal = Calendar(identifier: .gregorian)
-    cal.firstWeekday = 2
-    let weekday = cal.component(.weekday, from: date)
-    let delta = weekday == 1 ? -6 : (2 - weekday)
-    return cal.date(byAdding: .day, value: delta, to: cal.startOfDay(for: date)) ?? date
-}
-
-private func currentAcademicYear() -> Int {
-    var cal = Calendar(identifier: .gregorian)
-    cal.locale = Locale(identifier: "it_IT")
-    let month = cal.component(.month, from: Date())
-    let year  = cal.component(.year, from: Date())
-    return month >= 8 ? year : (year - 1)
-}
 
 private func minutesSinceMidnight(_ time: String) -> Int {
     let parts = time.split(separator: ":").compactMap { Int($0) }
     guard parts.count >= 2 else { return 0 }
     return parts[0] * 60 + parts[1]
-}
-
-private func loadTodayLessons() -> [WidgetLesson] {
-    guard let defaults = UserDefaults(suiteName: appGroupSuite) else { return [] }
-    let decoder = JSONDecoder()
-
-    guard
-        let prefData = defaults.data(forKey: "univr.preferences"),
-        let prefs = try? decoder.decode(WidgetPreferences.self, from: prefData),
-        let courseID = prefs.selectedCourseID
-    else { return [] }
-
-    let hiddenSubjects = Set(prefs.hiddenSubjects ?? [])
-    let academicYear = prefs.selectedAcademicYear ?? currentAcademicYear()
-    let weekStart = italianMonday(for: Date())
-    let fmt = DateFormatter()
-    fmt.locale = Locale(identifier: "en_US_POSIX")
-    fmt.dateFormat = "yyyy-MM-dd"
-    fmt.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-    let weekStartStr = fmt.string(from: weekStart)
-    let key = "lessons:\(courseID):\(prefs.selectedCourseYear):\(academicYear):\(weekStartStr)"
-
-    guard
-        let cacheData = defaults.data(forKey: "univr.cache.lessons"),
-        let entries = try? decoder.decode([WidgetLessonsCacheEntry].self, from: cacheData),
-        let entry = entries.first(where: { $0.key == key })
-    else { return [] }
-
-    let today = entry.lessons.filter { Calendar.current.isDateInToday($0.date) }
-    if hiddenSubjects.isEmpty { return today }
-    return today.filter { !hiddenSubjects.contains($0.title) }
 }
 
 // MARK: - Timeline Entry
@@ -126,7 +52,7 @@ struct TimetableProvider: TimelineProvider {
     }
 
     private func makeEntry() -> TimetableEntry {
-        let lessons = loadTodayLessons()
+        let lessons = SharedCacheReader.lessons(for: Date())
         let cal = Calendar.current
         let now = Date()
         let currentMins = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
