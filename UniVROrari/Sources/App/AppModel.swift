@@ -463,6 +463,7 @@ final class AppModel: ObservableObject {
             }
             SpotlightIndexer.indexLessons(fetchedLessons)
             liveActivityManager.refresh(lessonsGroupedByDay: lessonsGroupedByDay, courseName: selectedCourse?.name ?? "")
+            prefetchAdjacentWeeks()
         } catch {
             if Self.isCancelledError(error) { return }
             isLoadingLessons = false
@@ -470,6 +471,40 @@ final class AppModel: ObservableObject {
                 lessonsError = "No connection — showing offline schedule as of \(Self.cacheDateFormatter.string(from: cached.savedAt))."
             } else {
                 lessonsError = error.localizedDescription
+            }
+        }
+    }
+
+    private func prefetchAdjacentWeeks() {
+        guard let selectedCourse else { return }
+        let courseID = selectedCourse.id
+        let year = selectedCourseYear
+        let academicYear = selectedAcademicYear
+        let current = weekStartDate
+        let bounds = _weekBounds
+
+        for offset in [-1, 1] {
+            let adjacentWeek = DateHelpers.addWeeks(offset, to: current)
+            guard adjacentWeek >= bounds.start && adjacentWeek <= bounds.end else { continue }
+
+            let key = lessonsCacheKey(
+                courseID: courseID,
+                courseYear: year,
+                academicYear: academicYear,
+                weekStart: adjacentWeek
+            )
+            guard localStore.loadLessonsCache(forKey: key) == nil else { continue }
+
+            let client = apiClient
+            let store = localStore
+            Task.detached(priority: .utility) {
+                guard let lessons = try? await client.fetchWeeklyLessons(
+                    courseID: courseID,
+                    courseYear: year,
+                    academicYear: academicYear,
+                    weekStart: adjacentWeek
+                ) else { return }
+                store.saveLessonsCache(forKey: key, lessons: lessons)
             }
         }
     }
