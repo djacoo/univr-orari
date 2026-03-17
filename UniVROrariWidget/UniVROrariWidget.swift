@@ -30,24 +30,6 @@ fileprivate struct WidgetPreferences: Codable {
     var hiddenSubjects: [String]?
 }
 
-// MARK: - Live Activity attributes (must stay in sync with LectureActivityAttributes in AppModel)
-
-struct LectureActivityAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        enum Phase: String, Codable, Hashable {
-            case live, upcoming, idle, allDone
-        }
-        let phase: Phase
-        let lessonTitle: String
-        let room: String
-        let startTime: String
-        let endTime: String
-        let startDate: Date
-        let endDate: Date
-        let isDarkMode: Bool
-    }
-    let courseName: String
-}
 
 // MARK: - Helpers
 

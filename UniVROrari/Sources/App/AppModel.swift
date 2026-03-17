@@ -11,25 +11,6 @@ enum ShortcutAction {
     case findFreeRoom
 }
 
-struct LectureActivityAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        enum Phase: String, Codable, Hashable {
-            case live       // lesson in progress
-            case upcoming   // starts within lead-time window
-            case idle       // gap between lessons, next lesson later today
-            case allDone    // no more lessons today
-        }
-        let phase: Phase
-        let lessonTitle: String
-        let room: String
-        let startTime: String
-        let endTime: String
-        let startDate: Date   // lesson start (or next lesson start for idle/upcoming)
-        let endDate: Date     // lesson end
-        let isDarkMode: Bool
-    }
-    let courseName: String
-}
 
 @MainActor
 final class AppModel: ObservableObject {
