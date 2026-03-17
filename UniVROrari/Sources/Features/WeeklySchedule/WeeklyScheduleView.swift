@@ -1,5 +1,6 @@
 import SwiftUI
 import FoundationModels
+import UIKit
 
 // MARK: - WeeklyScheduleView
 
@@ -11,6 +12,12 @@ struct WeeklyScheduleView: View {
     @State private var viewMode: WeekViewMode = .list
     @State private var showingSubjectFilter = false
     @State private var selectedLesson: Lesson?
+    @State private var exportURL: IdentifiableURL?
+
+    struct IdentifiableURL: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
 
     var body: some View {
         scheduleScrollView
@@ -30,11 +37,30 @@ struct WeeklyScheduleView: View {
                     }
             )
             .sheet(item: $selectedLesson) { lesson in LessonDetailSheet(lesson: lesson) }
+            .sheet(item: $exportURL) { item in
+                ActivityViewControllerWrapper(activityItems: [item.url])
+            }
             .navigationTitle("Timetable")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     yearPickerToolbar
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        let ics = ICSExporter.generateICS(
+                            lessons: model.lessons,
+                            courseName: model.selectedCourse?.name ?? "UniVR"
+                        )
+                        if let url = ICSExporter.writeToTempFile(ics: ics) {
+                            exportURL = IdentifiableURL(url: url)
+                        }
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .tint(Color.uiTextSecondary)
+                    .disabled(model.lessons.isEmpty)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -474,4 +500,14 @@ struct WeeklyScheduleView: View {
         return f.string(from: model.weekStartDate)
     }
 
+}
+
+// MARK: - ActivityViewControllerWrapper
+
+struct ActivityViewControllerWrapper: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
